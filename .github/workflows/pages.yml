@@ -9,13 +9,14 @@ jobs:
     build:
         runs-on: ubuntu-latest
         steps:
-            - uses: actions/checkout@v3
-            - uses: actions/setup-node@v3
+            - uses: actions/checkout@v4
+            - uses: oven-sh/setup-bun@v2
               with:
-                  node-version-file: '.nvmrc'
-            - run: npm i
-            - run: npm run build
-            - uses: actions/upload-pages-artifact@v2
+                  bun-version: latest
+            - run: bun ci
+            - run: bun run check
+            - run: bun run build
+            - uses: actions/upload-pages-artifact@v4
               with:
                   path: ./dist
     deploy:
@@ -28,5 +29,5 @@ jobs:
             url: ${{ steps.deployment.outputs.page_url }}
         runs-on: ubuntu-latest
         steps:
-            - uses: actions/deploy-pages@v2
+            - uses: actions/deploy-pages@v4
               id: deployment

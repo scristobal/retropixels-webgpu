@@ -36,9 +36,15 @@ function spriteSheet(atlas: Atlas) {
 
                 // prettier-ignore
                 this.transform.set([
-                    this._currentSprite.size[0] / this._imgSize[0], 0, 0,
-                    0, this._currentSprite.size[1] / this._imgSize[1], 0,
-                    this._currentSprite.location[0] / this._imgSize[0], this._currentSprite.location[1] / this._imgSize[1], 1
+                    this._currentSprite.size[0] / this._imgSize[0],
+                    0,
+                    0,
+                    0,
+                    this._currentSprite.size[1] / this._imgSize[1],
+                    0,
+                    this._currentSprite.location[0] / this._imgSize[0],
+                    this._currentSprite.location[1] / this._imgSize[1],
+                    1
                 ]);
             }
         },

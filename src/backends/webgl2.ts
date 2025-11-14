@@ -1,13 +1,11 @@
-import { inputHandler } from 'src/systems/input';
-import { resizeHandler } from 'src/helpers/resize';
-import { spriteSheet } from 'src/systems/sprites';
-import { loadImageData } from 'src/helpers/image';
-import { movement } from 'src/systems/movement';
-
-import vertexShaderCode from 'src/shaders/vertex.glsl?raw';
-import fragmentShaderCode from 'src/shaders/fragment.glsl?raw';
-
 import animationData from 'src/data/animation.json';
+import { loadImageData } from 'src/helpers/image';
+import { resizeHandler } from 'src/helpers/resize';
+import fragmentShaderCode from 'src/shaders/fragment.glsl?raw';
+import vertexShaderCode from 'src/shaders/vertex.glsl?raw';
+import { inputHandler } from 'src/systems/input';
+import { movement } from 'src/systems/movement';
+import { spriteSheet } from 'src/systems/sprites';
 
 async function renderer(canvasElement: HTMLCanvasElement) {
     const gl = canvasElement.getContext('webgl2');
@@ -152,10 +150,18 @@ async function renderer(canvasElement: HTMLCanvasElement) {
             // |  |
             // 2--1
             //   x,  y,  z,
-            1, 1, 0, // 0
-            1, -1, 0, // 1
-            -1, -1, 0, // 2
-            -1, 1, 0, // 3
+            1,
+            1,
+            0, // 0
+            1,
+            -1,
+            0, // 1
+            -1,
+            -1,
+            0, // 2
+            -1,
+            1,
+            0 // 3
         ]);
 
         gl.bufferData(gl.ARRAY_BUFFER, verticesPositionData, gl.STATIC_DRAW);
@@ -169,10 +175,14 @@ async function renderer(canvasElement: HTMLCanvasElement) {
             // |  |
             // 2--1
             //  u, v
-            1, 0,  // 0
-            1, 1,  // 1
-            0, 1,  // 2
-            0, 0   // 3
+            1,
+            0, // 0
+            1,
+            1, // 1
+            0,
+            1, // 2
+            0,
+            0 // 3
         ]);
         gl.bufferData(gl.ARRAY_BUFFER, verticesTextureData, gl.STATIC_DRAW);
 
@@ -186,8 +196,12 @@ async function renderer(canvasElement: HTMLCanvasElement) {
             // |   /   |
             // | /   B |
             // 2 - - - 1
-            3, 2, 0, // A
-            2, 1, 0, // B
+            3,
+            2,
+            0, // A
+            2,
+            1,
+            0 // B
         ]);
 
         gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indicesData, gl.STATIC_DRAW);
@@ -196,6 +210,9 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         gl.activeTexture(textureIndex);
 
         const imgData = await loadImageData('/sprite-sheet.png');
+
+        if (!imgData) throw 'Failed to load sprite sheet';
+
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, imgData.width, imgData.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, imgData);
     }
 

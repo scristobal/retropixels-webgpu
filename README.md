@@ -1,8 +1,8 @@
-# Plaster
+# Retropixels 
 
-A experimental 2D-ish render/game engine.
+A experimental 2D render and game engine, focused on raw pixel manipulation and retro effects. 
 
-Just experimenting with WebGL2 and WebGPU, with some sparks of Rust/C in Web Assembly here and there... maybe some semi exotic APIs like the Gamepad API or the WebTransport API.
+Just experimenting with WebGL2 and WebGPU, expect very rough edges. 
 
 -   [x] Full WbGL2 support
 -   [x] Limited WebGPU setup
@@ -15,3 +15,4 @@ Just experimenting with WebGL2 and WebGPU, with some sparks of Rust/C in Web Ass
 -   [ ] Lighting, 2D casting shadows, semi 2D normal maps
 -   [ ] Multiplayer, maybe
 -   [ ] Gamepad support, likely
+-   [ ] WebTransport API, maybe

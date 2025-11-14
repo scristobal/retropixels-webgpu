@@ -8,7 +8,7 @@ export function getImageDataUsingOfflineCanvas(bitmap: ImageBitmap) {
     // bitmaps do not get GC'd
     bitmap.close();
 
-    return ctx?.getImageData(0, 0, canvas.width, canvas.height)!;
+    return ctx?.getImageData(0, 0, canvas.width, canvas.height);
 }
 
 export function getImageDataUsingWebgl(bitmap: ImageBitmap, gl: WebGL2RenderingContext) {
