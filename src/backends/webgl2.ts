@@ -144,7 +144,6 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         // vertices coordinates
         gl.bindBuffer(gl.ARRAY_BUFFER, verticesPositionBuffer);
 
-        // prettier-ignore
         const verticesPositionData = new Float32Array([
             // 3--0
             // |  |
@@ -169,7 +168,6 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         // texture coordinates
         gl.bindBuffer(gl.ARRAY_BUFFER, verticesTextureBuffer);
 
-        // prettier-ignore
         const verticesTextureData = new Float32Array([
             // 3--0
             // |  |
@@ -189,7 +187,6 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         // vertex indices
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indicesBuffer);
 
-        // prettier-ignore
         const indicesData = new Uint16Array([
             // 3 - - - 0
             // | A   / |

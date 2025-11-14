@@ -3,7 +3,6 @@ function identity() {
 }
 
 function scaling(v: Float32Array) {
-    // prettier-ignore
     return new Float32Array([
         v[0],
         0,
@@ -25,7 +24,6 @@ function scaling(v: Float32Array) {
 }
 
 function translation(v: Float32Array) {
-    // prettier-ignore
     return new Float32Array([
         1,
         0,
@@ -47,7 +45,6 @@ function translation(v: Float32Array) {
 }
 
 function multiply(lhs: Float32Array, rhs: Float32Array) {
-    // prettier-ignore
     return new Float32Array([
         lhs[0] * rhs[0] + lhs[4] * rhs[1] + lhs[8] * rhs[2] + lhs[12] * rhs[3],
         lhs[1] * rhs[0] + lhs[5] * rhs[1] + lhs[9] * rhs[2] + lhs[13] * rhs[3],
@@ -104,7 +101,6 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     // vertices data
 
-    // prettier-ignore
     // 3--0
     // |  |
     // 2--1
@@ -159,7 +155,6 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     // vertices data indexing
 
-    // prettier-ignore
     // 3 - - - 0
     // |     / |
     // |   /   |

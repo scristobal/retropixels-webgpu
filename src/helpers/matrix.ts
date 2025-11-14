@@ -4,7 +4,6 @@ function m4() {
         op: new Float32Array(16),
 
         get identity() {
-            // prettier-ignore
             this.data.set([
                 1,
                 0,
@@ -28,7 +27,6 @@ function m4() {
         },
 
         __multiply() {
-            // prettier-ignore
             this.data.set([
                 this.data[0] * this.op[0] + this.data[4] * this.op[1] + this.data[8] * this.op[2] + this.data[12] * this.op[3],
                 this.data[1] * this.op[0] + this.data[5] * this.op[1] + this.data[9] * this.op[2] + this.data[13] * this.op[3],
@@ -57,7 +55,6 @@ function m4() {
             const c = Math.cos(rd);
             const s = Math.sin(rd);
 
-            // prettier-ignore
             this.op.set([
                 ux * ux * (1 - c) + c,
                 ux * uy * (1 - c) + uz * s,
@@ -80,7 +77,6 @@ function m4() {
             return this.__multiply();
         },
         scale(sx: number, sy: number, sz: number) {
-            // prettier-ignore
             this.op.set([
                 sx,
                 0,
@@ -103,7 +99,6 @@ function m4() {
             return this.__multiply();
         },
         translate(tx: number, ty: number, tz: number) {
-            // prettier-ignore
             this.op.set([
                 1,
                 0,

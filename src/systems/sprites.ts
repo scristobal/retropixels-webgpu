@@ -34,7 +34,6 @@ function spriteSheet(atlas: Atlas) {
                 this._currentFrameTime = this._currentFrame.duration - this._currentFrameTime;
                 this._currentFrameName = this._currentFrame.next;
 
-                // prettier-ignore
                 this.transform.set([
                     this._currentSprite.size[0] / this._imgSize[0],
                     0,
