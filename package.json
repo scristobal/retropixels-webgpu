@@ -10,7 +10,7 @@
         "eslint-config-prettier": "^9.1.0",
         "globals": "^15.14.0",
         "hint": "^7.1.13",
-        "npm-check-updates": "^17.1.13",
+        "npm-check-updates": "^19.1.2",
         "npm-run-all": "^4.1.5",
         "nvm-auto": "^1.2.0",
         "prettier": "^3.4.2",
