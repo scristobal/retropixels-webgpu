@@ -1,80 +1,10 @@
-function identity() {
-    return scaling(new Float32Array([1, 1, 1]));
-}
-
-function scaling(v: Float32Array) {
-    return new Float32Array([
-        v[0],
-        0,
-        0,
-        0, // <-- column 0
-        0,
-        v[1],
-        0,
-        0, // <-- column 1
-        0,
-        0,
-        v[2],
-        0, // <-- column 2
-        0,
-        0,
-        0,
-        1 // <-- column 3
-    ]);
-}
-
-function translation(v: Float32Array) {
-    return new Float32Array([
-        1,
-        0,
-        0,
-        0, // <-- column 0
-        0,
-        1,
-        0,
-        0, // <-- column 1
-        0,
-        0,
-        1,
-        0, // <-- column 2
-        v[0],
-        v[1],
-        v[2],
-        1 // <-- column 3
-    ]);
-}
-
-function multiply(lhs: Float32Array, rhs: Float32Array) {
-    return new Float32Array([
-        lhs[0] * rhs[0] + lhs[4] * rhs[1] + lhs[8] * rhs[2] + lhs[12] * rhs[3],
-        lhs[1] * rhs[0] + lhs[5] * rhs[1] + lhs[9] * rhs[2] + lhs[13] * rhs[3],
-        lhs[2] * rhs[0] + lhs[6] * rhs[1] + lhs[10] * rhs[2] + lhs[14] * rhs[3],
-        lhs[3] * rhs[0] + lhs[7] * rhs[1] + lhs[11] * rhs[2] + lhs[15] * rhs[3],
-
-        lhs[0] * rhs[4] + lhs[4] * rhs[5] + lhs[8] * rhs[6] + lhs[12] * rhs[7],
-        lhs[1] * rhs[4] + lhs[5] * rhs[5] + lhs[9] * rhs[6] + lhs[13] * rhs[7],
-        lhs[2] * rhs[4] + lhs[6] * rhs[5] + lhs[10] * rhs[6] + lhs[14] * rhs[7],
-        lhs[3] * rhs[4] + lhs[7] * rhs[5] + lhs[11] * rhs[6] + lhs[15] * rhs[7],
-
-        lhs[0] * rhs[8] + lhs[4] * rhs[9] + lhs[8] * rhs[10] + lhs[12] * rhs[11],
-        lhs[1] * rhs[8] + lhs[5] * rhs[9] + lhs[9] * rhs[10] + lhs[13] * rhs[11],
-        lhs[2] * rhs[8] + lhs[6] * rhs[9] + lhs[10] * rhs[10] + lhs[14] * rhs[11],
-        lhs[3] * rhs[8] + lhs[7] * rhs[9] + lhs[11] * rhs[10] + lhs[15] * rhs[11],
-
-        lhs[0] * rhs[12] + lhs[4] * rhs[13] + lhs[8] * rhs[14] + lhs[12] * rhs[15],
-        lhs[1] * rhs[12] + lhs[5] * rhs[13] + lhs[9] * rhs[14] + lhs[13] * rhs[15],
-        lhs[2] * rhs[12] + lhs[6] * rhs[13] + lhs[10] * rhs[14] + lhs[14] * rhs[15],
-        lhs[3] * rhs[12] + lhs[7] * rhs[13] + lhs[11] * rhs[14] + lhs[15] * rhs[15]
-    ]);
-}
-
-function _scale(m: Float32Array, v: Float32Array) {
-    return multiply(m, scaling(v));
-}
-
-function translate(m: Float32Array, v: Float32Array) {
-    return multiply(m, translation(v));
-}
+import animationData from 'src/data/animation.json';
+import { loadImageBitmap } from 'src/helpers/image';
+import { resizeHandler } from 'src/helpers/resize';
+import shaderCode from 'src/shaders/shaders.wgsl?raw';
+import { inputHandler } from 'src/systems/input';
+import { movement } from 'src/systems/movement';
+import { spriteSheet } from 'src/systems/sprites';
 
 async function renderer(canvasElement: HTMLCanvasElement) {
     /**
@@ -84,50 +14,23 @@ async function renderer(canvasElement: HTMLCanvasElement) {
      */
 
     const adapter = await navigator.gpu.requestAdapter();
-
     if (!adapter) throw new Error('Unable to request adapter');
 
     const device = await adapter.requestDevice();
-
     if (!device) throw new Error('Unable to request device ');
 
-    const canvasFormat = navigator.gpu.getPreferredCanvasFormat();
+    const ctx = canvasElement.getContext('webgpu');
+    if (!ctx) throw new Error('Unable to get WebGPU canvas context');
 
-    const canvasContext = canvasElement.getContext('webgpu');
+    const format = navigator.gpu.getPreferredCanvasFormat();
+    ctx.configure({ format, device });
 
-    if (!canvasContext) throw new Error('Unable to get WebGPU canvas context');
-
-    canvasContext.configure({ format: canvasFormat, device });
-
-    // vertices data
-
-    // 3--0
-    // |  |
-    // 2--1
-    const verticesData = new Float32Array([
-        //   clip space    texture
-        //   x,  y,  z,    u, v
-        1,
-        1,
-        1,
-        1,
-        0, // 0
-        1,
-        -1,
-        1,
-        1,
-        1, // 1
-        -1,
-        -1,
-        1,
-        0,
-        1, // 2
-        -1,
-        1,
-        1,
-        0,
-        0 // 3
-    ]);
+    //  3--0
+    //  |  |
+    //  2--1
+    //                                     x  y  z  u  v
+    //                                    |       :     |         :     |          :     |         :     |
+    const verticesData = new Float32Array([1, 1, 1, 1, 0, 1, -1, 1, 1, 1, -1, -1, 1, 0, 1, -1, 1, 1, 0, 0]);
 
     const verticesBuffer: GPUBuffer = device.createBuffer({
         size: verticesData.byteLength,
@@ -137,7 +40,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     device.queue.writeBuffer(verticesBuffer, 0, verticesData);
 
     const verticesBufferLayout: GPUVertexBufferLayout = {
-        arrayStride: 3 * 4 + 2 * 4,
+        arrayStride: 3 * 4 + 2 * 4, // f32 is 32 bits = 4 bytes
         stepMode: 'vertex', // optional
         attributes: [
             {
@@ -173,46 +76,39 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     // textures
 
-    async function loadImageBitmap(url: string) {
-        const res = await fetch(url);
-        const blob = await res.blob();
-        return await createImageBitmap(blob, { colorSpaceConversion: 'none' });
-    }
-
     const url = '/avatar-1x.png';
     const source = await loadImageBitmap(url);
 
     const texture = device.createTexture({
         label: url,
-        format: canvasFormat,
+        format: format,
         size: [source.width, source.height],
         usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_DST
     });
 
     device.queue.copyExternalImageToTexture({ source }, { texture }, { width: source.width, height: source.height });
 
+    const resize = resizeHandler(device.limits.maxTextureDimension2D, canvasElement);
     // depth texture
 
     let depthTexture = device.createTexture({
-        size: [canvasElement.width, canvasElement.height],
+        size: resize.resolution,
         format: 'depth32float',
         usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.RENDER_ATTACHMENT
     });
 
     // uniforms - resolution
 
-    const resolutionData = new Float32Array([canvasElement.width, canvasElement.height]);
-
     const resolutionBuffer: GPUBuffer = device.createBuffer({
-        size: resolutionData.byteLength,
+        size: resize.resolution.byteLength,
         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
 
-    device.queue.writeBuffer(resolutionBuffer, 0, resolutionData);
+    device.queue.writeBuffer(resolutionBuffer, 0, resize.resolution);
 
     // uniforms - camera transformation matrix
 
-    const cameraData = identity();
+    const cameraData = new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
 
     const cameraBuffer = device.createBuffer({
         size: cameraData.byteLength,
@@ -271,38 +167,8 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     });
 
     // shaders
-
     const shaderModule: GPUShaderModule = device.createShaderModule({
-        code: /* wgsl */ `
-
-        @group(0) @binding(0) var<uniform> resolution: vec2f;
-        @group(0) @binding(1) var<uniform> camera: mat4x4<f32>;
-
-        struct VertexOutput {
-            @builtin(position) position: vec4f,
-            @location(0) texture_coords: vec2f,
-        };
-
-        @vertex fn vertex_main(@location(0) position: vec3f, @location(1) texture_coords: vec2f ) -> VertexOutput {
-
-
-            var output: VertexOutput;
-            output.position = camera * vec4f(position.xyz, 1.0);
-
-            output.texture_coords = texture_coords;
-
-            return output;
-        }
-
-        @group(0) @binding(2) var texture_sampler: sampler;
-        @group(0) @binding(3) var texture: texture_2d<f32>;
-
-
-        @fragment fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
-            return textureSample(texture, texture_sampler, input.texture_coords);
-        }
-
-        `
+        code: shaderCode
     });
 
     // pipeline
@@ -319,7 +185,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
             module: shaderModule,
             targets: [
                 {
-                    format: canvasFormat,
+                    format: format,
                     blend: {
                         color: {
                             srcFactor: 'src-alpha',
@@ -345,104 +211,56 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     /**
      *
-     * Resize canvas and contents correctly
-     *
-     */
-
-    const maxTextureDimension = device.limits.maxTextureDimension2D;
-
-    const resizeCanvasToDisplaySize = ((maxTextureDimension: number) => {
-        const canvasToSizeMap = new WeakMap<Element, { width: number; height: number }>();
-
-        const observer = new ResizeObserver((entries) => {
-            for (const entry of entries) {
-                const contentBoxSize = entry.contentBoxSize[0];
-
-                if (!contentBoxSize) continue;
-
-                canvasToSizeMap.set(entry.target, {
-                    width: contentBoxSize.inlineSize,
-                    height: contentBoxSize.blockSize
-                });
-            }
-        });
-
-        observer.observe(canvasElement);
-
-        return (canvas: HTMLCanvasElement) => {
-            let { width, height } = canvasToSizeMap.get(canvas) || canvas;
-
-            width = Math.max(1, Math.min(width ?? maxTextureDimension, maxTextureDimension));
-            height = Math.max(1, Math.min(height ?? maxTextureDimension, maxTextureDimension));
-
-            const needResize = canvas.width !== width || canvas.height !== height;
-
-            if (needResize) {
-                canvas.width = width;
-                canvas.height = height;
-            }
-
-            return needResize;
-        };
-    })(maxTextureDimension);
-
-    /**
-     *
      * Update loop
      *
      */
+    const spriteSystem = spriteSheet(animationData);
+
+    const movementSystem = movement({
+        center: { x: 0, y: 0, z: 0 },
+        speed: { x: 0.02, y: 0.02, z: 0 },
+        angle: 0,
+        rotationSpeed: 0.01
+    });
 
     let lastUpdate = performance.now();
 
-    let ratio = resolutionData[0] / resolutionData[1];
-
-    let needsResize = false;
-
-    let angle = 0;
-
     function update(now: number) {
-        needsResize = resizeCanvasToDisplaySize(canvasElement);
-
-        if (needsResize) {
-            resolutionData.set([canvasElement.width, canvasElement.height]);
-            ratio = resolutionData[0] / resolutionData[1];
-        }
-
         const delta = now - lastUpdate;
 
-        angle += delta / 100;
+        if (inputHandler.right) movementSystem.moveRight(delta);
+        if (inputHandler.left) movementSystem.moveLeft(delta);
+        if (inputHandler.up) movementSystem.moveUp(delta);
+        if (inputHandler.down) movementSystem.moveDown(delta);
+        if (inputHandler.turnRight) movementSystem.rotateClockWise(delta);
+        if (inputHandler.turnLeft) movementSystem.rotateCounterClockWise(delta);
 
-        const v = new Float32Array([0.8 * Math.cos(angle), 0.8 * Math.sin(angle), 0]);
-
-        const m = translate(scaling(new Float32Array([0.2 / ratio, 0.2, 1])), new Float32Array(v));
-
-        cameraData.set(m);
-
-        lastUpdate = now;
+        spriteSystem.update(delta);
     }
+
     /**
      *
      * Render loop
      *
      */
     function render() {
-        if (!canvasContext) throw new Error('Canvas context lost');
+        if (!ctx) throw new Error('Canvas context lost');
 
-        if (needsResize) {
+        if (resize.needsResize) {
             depthTexture = device.createTexture({
-                size: resolutionData,
+                size: resize.resolution,
                 format: depthTexture.format,
                 usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING
             });
 
-            device.queue.writeBuffer(resolutionBuffer, 0, resolutionData);
+            device.queue.writeBuffer(resolutionBuffer, 0, resize.resolution);
         }
 
         device.queue.writeBuffer(cameraBuffer, 0, cameraData);
 
         const encoder = device.createCommandEncoder();
 
-        const canvasView = canvasContext.getCurrentTexture().createView();
+        const canvasView = ctx.getCurrentTexture().createView();
         const depthView = depthTexture.createView();
 
         const renderPass = encoder.beginRenderPass({
@@ -477,18 +295,32 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         device.queue.submit([commandBuffer]);
     }
 
+    const frameTimes = new Float32Array(1024);
+    let frameTimesInd = 0;
+
     /**
      *
      * Main loop (main function return as Promise)
      *
      */
-    function mainLoop(now: number) {
+    function gameLoop(now: number) {
         update(now);
         render();
-        requestAnimationFrame(mainLoop);
+
+        requestAnimationFrame(gameLoop);
+
+        frameTimes[++frameTimesInd] = performance.now() - now;
+
+        if (frameTimesInd === frameTimes.length) {
+            const average = frameTimes.reduce((acc, cur) => acc + cur, 0) / frameTimes.length;
+            console.log(`Last ${frameTimes.length.toFixed(0)} frames draw average time was ${average.toFixed(3)}ms (roughly equivalent to ${(1000 / average).toFixed(3)} frames per second)`);
+            frameTimesInd = 0;
+        }
+
+        lastUpdate = performance.now();
     }
 
-    return mainLoop;
+    return gameLoop;
 }
 
 export { renderer };

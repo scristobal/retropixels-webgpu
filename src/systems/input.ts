@@ -10,11 +10,7 @@ const inputHandler = {
     left: false,
     right: false,
     turnLeft: false,
-    turnRight: false,
-
-    get keypress() {
-        return this.right || this.left || this.up || this.down || this.turnLeft || this.turnRight;
-    }
+    turnRight: false
 };
 
 window.onkeydown = (e) => {

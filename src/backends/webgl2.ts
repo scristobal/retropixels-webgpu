@@ -7,7 +7,7 @@ import { inputHandler } from 'src/systems/input';
 import { movement } from 'src/systems/movement';
 import { spriteSheet } from 'src/systems/sprites';
 
-export async function renderer(canvasElement: HTMLCanvasElement) {
+async function renderer(canvasElement: HTMLCanvasElement) {
     const gl = canvasElement.getContext('webgl2');
     if (!gl) throw 'WebGL2 not supported in this browser';
 
@@ -143,63 +143,37 @@ export async function renderer(canvasElement: HTMLCanvasElement) {
 
         // vertices coordinates
         gl.bindBuffer(gl.ARRAY_BUFFER, verticesPositionBuffer);
-
-        const verticesPositionData = new Float32Array([
-            // 3--0
-            // |  |
-            // 2--1
-            //   x,  y,  z,
-            1,
-            1,
-            0, // 0
-            1,
-            -1,
-            0, // 1
-            -1,
-            -1,
-            0, // 2
-            -1,
-            1,
-            0 // 3
-        ]);
+        // 3--0
+        // |  |
+        // 2--1
+        //                                             x  y  z
+        //                                            |       |         |          |         |
+        const verticesPositionData = new Float32Array([1, 1, 0, 1, -1, 0, -1, -1, 0, -1, 1, 0]);
 
         gl.bufferData(gl.ARRAY_BUFFER, verticesPositionData, gl.STATIC_DRAW);
 
         // texture coordinates
         gl.bindBuffer(gl.ARRAY_BUFFER, verticesTextureBuffer);
 
-        const verticesTextureData = new Float32Array([
-            // 3--0
-            // |  |
-            // 2--1
-            //  u, v
-            1,
-            0, // 0
-            1,
-            1, // 1
-            0,
-            1, // 2
-            0,
-            0 // 3
-        ]);
+        // 3--0
+        // |  |
+        // 2--1
+        //                                            u  v
+        //                                           |    |     |     |     |
+        const verticesTextureData = new Float32Array([1, 0, 1, 1, 0, 1, 0, 0]);
         gl.bufferData(gl.ARRAY_BUFFER, verticesTextureData, gl.STATIC_DRAW);
 
         // vertex indices
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indicesBuffer);
 
-        const indicesData = new Uint16Array([
-            // 3 - - - 0
-            // | A   / |
-            // |   /   |
-            // | /   B |
-            // 2 - - - 1
-            3,
-            2,
-            0, // A
-            2,
-            1,
-            0 // B
-        ]);
+        // 3 - - - 0
+        // | A   / |
+        // |   /   |
+        // | /   B |
+        // 2 - - - 1
+        //                                      A        B
+        //                                  |       |        |
+        const indicesData = new Uint16Array([3, 2, 0, 2, 1, 0]);
 
         gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indicesData, gl.STATIC_DRAW);
 
@@ -232,14 +206,12 @@ export async function renderer(canvasElement: HTMLCanvasElement) {
     function update(now: number) {
         const delta = now - lastUpdate;
 
-        if (inputHandler.keypress) {
-            if (inputHandler.right) movementSystem.moveRight(delta);
-            if (inputHandler.left) movementSystem.moveLeft(delta);
-            if (inputHandler.up) movementSystem.moveUp(delta);
-            if (inputHandler.down) movementSystem.moveDown(delta);
-            if (inputHandler.turnRight) movementSystem.rotateClockWise(delta);
-            if (inputHandler.turnLeft) movementSystem.rotateCounterClockWise(delta);
-        }
+        if (inputHandler.right) movementSystem.moveRight(delta);
+        if (inputHandler.left) movementSystem.moveLeft(delta);
+        if (inputHandler.up) movementSystem.moveUp(delta);
+        if (inputHandler.down) movementSystem.moveDown(delta);
+        if (inputHandler.turnRight) movementSystem.rotateClockWise(delta);
+        if (inputHandler.turnLeft) movementSystem.rotateCounterClockWise(delta);
 
         spriteSystem.update(delta);
     }
@@ -309,3 +281,5 @@ export async function renderer(canvasElement: HTMLCanvasElement) {
         gameLoop(performance.now());
     };
 }
+
+export { renderer };
