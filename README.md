@@ -14,5 +14,4 @@ Just experimenting with WebGL2 and WebGPU, expect very rough edges.
 -   [x] Sprite animation (at least in infinite loop)
 -   [ ] Lighting, 2D casting shadows, semi 2D normal maps
 -   [ ] Multiplayer, maybe
--   [ ] Gamepad support, likely
--   [ ] WebTransport API, maybe
+-   [ ] Gamepad support, maybe

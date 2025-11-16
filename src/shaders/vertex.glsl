@@ -2,7 +2,6 @@
 
 #pragma vscode_glsllint_stage: vert
 
-
 layout (location = 0) in vec3 a_coord;
 layout (location = 1) in vec2 a_texCoord;
 
@@ -22,4 +21,3 @@ void main() {
     gl_Position = vec4( (position.xy * u_scaling * u_modelSize) / u_resolution.xy ,  position.z, 1);
     v_texCoord =  u_texTransform * vec3(a_texCoord.xy, 1) ;
 }
-

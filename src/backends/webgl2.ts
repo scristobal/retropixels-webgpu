@@ -7,7 +7,7 @@ import { inputHandler } from 'src/systems/input';
 import { movement } from 'src/systems/movement';
 import { spriteSheet } from 'src/systems/sprites';
 
-async function renderer(canvasElement: HTMLCanvasElement) {
+export async function renderer(canvasElement: HTMLCanvasElement) {
     const gl = canvasElement.getContext('webgl2');
     if (!gl) throw 'WebGL2 not supported in this browser';
 
@@ -42,7 +42,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     if (!program) throw 'Failed to create program';
 
     // const verticesAttributeLocation = 0;
-    // gl.bindAttribLocation(program, verticesAttributeLocation, 'a_coords');
+    // gl.bindAttribLocation(program, verticesAttributeLocation, 'a_coord');
 
     // const verticesTextureLocation = 1;
     // gl.bindAttribLocation(program, verticesTextureLocation, 'a_texCoord');
@@ -309,5 +309,3 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         gameLoop(performance.now());
     };
 }
-
-export { renderer };

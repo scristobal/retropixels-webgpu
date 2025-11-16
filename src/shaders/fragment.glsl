@@ -17,4 +17,3 @@ out vec4 outColor;
 void main() {
     outColor = texture(u_texture, v_texCoord.xy);
 }
-
