@@ -61,26 +61,43 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     gl.useProgram(program);
 
     // Vertex array object (vao)
-    const verticesArrayObject = gl.createVertexArray();
-    gl.bindVertexArray(verticesArrayObject);
-
-    // vao - position coordinates
     const verticesBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, verticesBuffer);
 
+    // vertices
+    //  3--0
+    //  |  |
+    //  2--1
+    //                                           0              1               2                3
+    //                                     x  y  z  u  v
+    //                                    |       :     |         :     |          :     |         :     |
+    const verticesData = new Float32Array([1, 1, 0, 1, 0, 1, -1, 0, 1, 1, -1, -1, 0, 0, 1, -1, 1, 0, 0, 0]);
+
+    gl.bufferData(gl.ARRAY_BUFFER, verticesData, gl.STATIC_DRAW);
+
     const verticesAttributeLocation = gl.getAttribLocation(program, 'a_coord');
     gl.enableVertexAttribArray(verticesAttributeLocation);
-    // stride: 5 floats (xyzuv) = 20 bytes, offset: 0 (xyz starts at beginning)
     gl.vertexAttribPointer(verticesAttributeLocation, 3, gl.FLOAT, false, 3 * 4 + 2 * 4, 0);
 
     const verticesTextureLocation = gl.getAttribLocation(program, 'a_texCoord');
     gl.enableVertexAttribArray(verticesTextureLocation);
-    // stride: 5 floats (xyzuv) = 20 bytes, offset: 12 bytes (uv starts after xyz)
     gl.vertexAttribPointer(verticesTextureLocation, 2, gl.FLOAT, false, 3 * 4 + 2 * 4, 3 * 4);
 
     // vao - indexing
     const indicesBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indicesBuffer);
+
+    // vertex indices
+    //  3 - - - 0
+    //  | A   / |
+    //  |   /   |
+    //  | /   B |
+    //  2 - - - 1
+    //                                      A        B
+    //                                  |       |        |
+    const indicesData = new Uint16Array([3, 2, 0, 2, 1, 0]);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indicesBuffer);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indicesData, gl.STATIC_DRAW);
 
     // enable culling of back facing (clock wise) triangles
     gl.enable(gl.CULL_FACE);
@@ -92,7 +109,9 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     const resolutionUniformLocation = gl.getUniformLocation(program, 'u_resolution');
 
     // uniforms - scaling
+    const scalingData = 10;
     const scalingUniformLocation = gl.getUniformLocation(program, 'u_scaling');
+    gl.uniform1f(scalingUniformLocation, scalingData);
 
     // uniforms - xyz vertex position transform
     const positionTransformUniformLocation = gl.getUniformLocation(program, 'u_modelTransform');
@@ -114,58 +133,19 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 
+    // texture
+    gl.activeTexture(textureIndex);
+
+    const imgData = await loadImageData('/sprite-sheet.png');
+    if (!imgData) throw 'Failed to load sprite sheet';
+
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, imgData.width, imgData.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, imgData);
+
     // uniforms - texture size
     const spriteSizeUniformLocation = gl.getUniformLocation(program, 'u_modelSize');
 
     // uniform - uv texture transform
     const texTransformUniformLocation = gl.getUniformLocation(program, 'u_texTransform');
-
-    /**
-     *
-     * Load data into buffers
-     *
-     */
-    async function load() {
-        if (!gl) throw 'WebGL2 context lost';
-
-        // load canvas scale value
-        const scalingData = 10;
-        gl.uniform1f(scalingUniformLocation, scalingData);
-
-        // load model, vertices and texture coordinates and indexing
-        gl.bindVertexArray(verticesArrayObject);
-
-        // vertices
-        //  3--0
-        //  |  |
-        //  2--1
-        //                                           0              1               2                3
-        //                                     x  y  z  u  v
-        //                                    |       :     |         :     |          :     |         :     |
-        const verticesData = new Float32Array([1, 1, 0, 1, 0, 1, -1, 0, 1, 1, -1, -1, 0, 0, 1, -1, 1, 0, 0, 0]);
-        gl.bindBuffer(gl.ARRAY_BUFFER, verticesBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, verticesData, gl.STATIC_DRAW);
-
-        // vertex indices
-        //  3 - - - 0
-        //  | A   / |
-        //  |   /   |
-        //  | /   B |
-        //  2 - - - 1
-        //                                      A        B
-        //                                  |       |        |
-        const indicesData = new Uint16Array([3, 2, 0, 2, 1, 0]);
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indicesBuffer);
-        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indicesData, gl.STATIC_DRAW);
-
-        // texture
-        gl.activeTexture(textureIndex);
-
-        const imgData = await loadImageData('/sprite-sheet.png');
-        if (!imgData) throw 'Failed to load sprite sheet';
-
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, imgData.width, imgData.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, imgData);
-    }
 
     const resize = resizeHandler(gl.getParameter(gl.MAX_TEXTURE_SIZE), canvasElement);
 
@@ -256,8 +236,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         lastUpdate = performance.now();
     }
 
-    return async function () {
-        await load();
+    return function () {
         gameLoop(performance.now());
     };
 }

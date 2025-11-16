@@ -26,8 +26,8 @@ struct VertexOutput {
     return output;
 }
 
-@group(0) @binding(5) var texture_sampler: sampler;
-@group(0) @binding(6) var texture: texture_2d<f32>;
+@group(1) @binding(0) var texture_sampler: sampler;
+@group(1) @binding(1) var texture: texture_2d<f32>;
 
 @fragment fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
     return textureSample(texture, texture_sampler, input.a_texCoord);

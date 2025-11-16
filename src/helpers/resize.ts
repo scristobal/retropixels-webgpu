@@ -5,7 +5,7 @@
  */
 
 function resizeHandler(maxTextureDimension: number, canvasElement: HTMLCanvasElement) {
-    const canvasDisplaySize = { width: 0, height: 0 };
+    const canvasDisplaySize = { width: canvasElement.width, height: canvasElement.height};
 
     const observer = new ResizeObserver((entries) => {
         for (const entry of entries) {

@@ -80,8 +80,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     const indexFormat: GPUIndexFormat = 'uint32';
 
-    // textures
-
+    // texture - sprites
     const url = '/sprite-sheet.png';
     const source = await loadImageBitmap(url);
 
@@ -95,8 +94,8 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     device.queue.copyExternalImageToTexture({ source }, { texture }, { width: source.width, height: source.height });
 
     const resize = resizeHandler(device.limits.maxTextureDimension2D, canvasElement);
-    // depth texture
 
+    // texture - depth
     let depthTexture = device.createTexture({
         label: 'depth',
         size: resize.resolution,
@@ -159,7 +158,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     // bindings
 
-    const bindGroupLayout: GPUBindGroupLayout = device.createBindGroupLayout({
+    const vertexBindGroupLayout: GPUBindGroupLayout = device.createBindGroupLayout({
         entries: [
             {
                 binding: 0,
@@ -185,22 +184,12 @@ async function renderer(canvasElement: HTMLCanvasElement) {
                 binding: 4,
                 visibility: GPUShaderStage.VERTEX,
                 buffer: { type: 'uniform' }
-            },
-            {
-                binding: 5,
-                visibility: GPUShaderStage.FRAGMENT,
-                sampler: { type: 'filtering' }
-            },
-            {
-                binding: 6,
-                visibility: GPUShaderStage.FRAGMENT,
-                texture: { sampleType: 'float' }
             }
         ]
     });
 
-    const bindGroup = device.createBindGroup({
-        layout: bindGroupLayout,
+    const vertexBindGroup = device.createBindGroup({
+        layout: vertexBindGroupLayout,
         entries: [
             {
                 binding: 0,
@@ -221,13 +210,34 @@ async function renderer(canvasElement: HTMLCanvasElement) {
             {
                 binding: 4,
                 resource: { buffer: textureTransformBuffer }
+            }
+        ]
+    });
+
+    const fragmentBindGroupLayout: GPUBindGroupLayout = device.createBindGroupLayout({
+        entries: [
+            {
+                binding: 0,
+                visibility: GPUShaderStage.FRAGMENT,
+                sampler: { type: 'filtering' }
             },
             {
-                binding: 5,
+                binding: 1,
+                visibility: GPUShaderStage.FRAGMENT,
+                texture: { sampleType: 'float' }
+            }
+        ]
+    });
+
+    const fragmentBindGroup = device.createBindGroup({
+        layout: fragmentBindGroupLayout,
+        entries: [
+            {
+                binding: 0,
                 resource: device.createSampler()
             },
             {
-                binding: 6,
+                binding: 1,
                 resource: texture.createView()
             }
         ]
@@ -240,7 +250,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     // pipeline
 
-    const pipelineLayout: GPUPipelineLayout = device.createPipelineLayout({ bindGroupLayouts: [bindGroupLayout] });
+    const pipelineLayout: GPUPipelineLayout = device.createPipelineLayout({ bindGroupLayouts: [vertexBindGroupLayout, fragmentBindGroupLayout] });
 
     const pipeline: GPURenderPipeline = device.createRenderPipeline({
         layout: pipelineLayout,
@@ -276,14 +286,15 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         }
     });
 
+    let lastUpdate = performance.now();
+    const frameTimes = new Float32Array(1024);
+    let frameTimesInd = 0;
+
     /**
      *
      * Update loop
      *
      */
-
-    let lastUpdate = performance.now();
-
     function update(now: number) {
         const delta = now - lastUpdate;
 
@@ -295,6 +306,16 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         if (inputHandler.turnLeft) movementSystem.rotateCounterClockWise(delta);
 
         spriteSystem.update(delta);
+
+        frameTimes[++frameTimesInd] = performance.now() - now;
+
+        if (frameTimesInd === frameTimes.length) {
+            const average = frameTimes.reduce((acc, cur) => acc + cur, 0) / frameTimes.length;
+            console.log(`Last ${frameTimes.length.toFixed(0)} frames draw average time was ${average.toFixed(3)}ms (roughly equivalent to ${(1000 / average).toFixed(3)} frames per second)`);
+            frameTimesInd = 0;
+        }
+
+        lastUpdate = performance.now();
     }
 
     /**
@@ -345,7 +366,8 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         renderPass.setVertexBuffer(0, verticesBuffer);
         renderPass.setIndexBuffer(indicesBuffer, indexFormat);
 
-        renderPass.setBindGroup(0, bindGroup);
+        renderPass.setBindGroup(0, vertexBindGroup);
+        renderPass.setBindGroup(1, fragmentBindGroup);
 
         renderPass.drawIndexed(indicesData.length);
 
@@ -354,9 +376,6 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         const commandBuffer = encoder.finish();
         device.queue.submit([commandBuffer]);
     }
-
-    const frameTimes = new Float32Array(1024);
-    let frameTimesInd = 0;
 
     /**
      *
@@ -368,20 +387,9 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         render();
 
         requestAnimationFrame(gameLoop);
-
-        frameTimes[++frameTimesInd] = performance.now() - now;
-
-        if (frameTimesInd === frameTimes.length) {
-            const average = frameTimes.reduce((acc, cur) => acc + cur, 0) / frameTimes.length;
-            console.log(`Last ${frameTimes.length.toFixed(0)} frames draw average time was ${average.toFixed(3)}ms (roughly equivalent to ${(1000 / average).toFixed(3)} frames per second)`);
-            frameTimesInd = 0;
-        }
-
-        lastUpdate = performance.now();
     }
 
-    return async function () {
-        // await load();
+    return function () {
         gameLoop(performance.now());
     };
 }
