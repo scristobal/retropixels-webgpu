@@ -14,13 +14,13 @@ async function renderer(canvasElement: HTMLCanvasElement) {
      */
 
     const adapter = await navigator.gpu.requestAdapter();
-    if (!adapter) throw new Error('Unable to request adapter');
+    if (!adapter) throw 'Unable to request adapter';
 
     const device = await adapter.requestDevice();
-    if (!device) throw new Error('Unable to request device ');
+    if (!device) throw 'Unable to request device ';
 
     const ctx = canvasElement.getContext('webgpu');
-    if (!ctx) throw new Error('Unable to get WebGPU canvas context');
+    if (!ctx) throw 'Unable to get WebGPU canvas context';
 
     const format = navigator.gpu.getPreferredCanvasFormat();
     ctx.configure({ format, device });
@@ -98,24 +98,44 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     });
 
     // uniforms - resolution
-
     const resolutionBuffer: GPUBuffer = device.createBuffer({
         size: resize.resolution.byteLength,
         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
-
     device.queue.writeBuffer(resolutionBuffer, 0, resize.resolution);
 
-    // uniforms - camera transformation matrix
-
-    const cameraData = new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
-
-    const cameraBuffer = device.createBuffer({
-        size: cameraData.byteLength,
+    // uniforms - scaling
+    const scale = new Float32Array([4]);
+    const scalingBuffer: GPUBuffer = device.createBuffer({
+        size: scale.byteLength,
         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
+    device.queue.writeBuffer(scalingBuffer, 0, scale);
 
-    device.queue.writeBuffer(cameraBuffer, 0, cameraData);
+    const spriteSystem = spriteSheet(animationData);
+
+    // uniforms - model size
+    const modelSize = new Float32Array(spriteSystem.size);
+    const modelSizeBuffer: GPUBuffer = device.createBuffer({
+        size: modelSize.byteLength,
+        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+    });
+    device.queue.writeBuffer(modelSizeBuffer, 0, modelSize);
+
+    const movementSystem = movement({
+        center: { x: 0, y: 0, z: 0 },
+        speed: { x: 0.02, y: 0.02, z: 0 },
+        angle: 0,
+        rotationSpeed: 0.01
+    });
+
+    // uniforms - model transformation matrix
+    const modelTransformData = movementSystem.transform;
+    const modelTransformBuffer = device.createBuffer({
+        size: modelTransformData.byteLength,
+        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+    });
+    device.queue.writeBuffer(modelTransformBuffer, 0, modelTransformData);
 
     // bindings
 
@@ -133,11 +153,21 @@ async function renderer(canvasElement: HTMLCanvasElement) {
             },
             {
                 binding: 2,
+                visibility: GPUShaderStage.VERTEX,
+                buffer: { type: 'uniform' }
+            },
+            {
+                binding: 3,
+                visibility: GPUShaderStage.VERTEX,
+                buffer: { type: 'uniform' }
+            },
+            {
+                binding: 4,
                 visibility: GPUShaderStage.FRAGMENT,
                 sampler: { type: 'filtering' }
             },
             {
-                binding: 3,
+                binding: 5,
                 visibility: GPUShaderStage.FRAGMENT,
                 texture: { sampleType: 'float' }
             }
@@ -153,14 +183,22 @@ async function renderer(canvasElement: HTMLCanvasElement) {
             },
             {
                 binding: 1,
-                resource: { buffer: cameraBuffer }
+                resource: { buffer: scalingBuffer }
             },
             {
                 binding: 2,
-                resource: device.createSampler()
+                resource: { buffer: modelSizeBuffer }
             },
             {
                 binding: 3,
+                resource: { buffer: modelTransformBuffer }
+            },
+            {
+                binding: 4,
+                resource: device.createSampler()
+            },
+            {
+                binding: 5,
                 resource: texture.createView()
             }
         ]
@@ -214,14 +252,8 @@ async function renderer(canvasElement: HTMLCanvasElement) {
      * Update loop
      *
      */
-    const spriteSystem = spriteSheet(animationData);
 
-    const movementSystem = movement({
-        center: { x: 0, y: 0, z: 0 },
-        speed: { x: 0.02, y: 0.02, z: 0 },
-        angle: 0,
-        rotationSpeed: 0.01
-    });
+
 
     let lastUpdate = performance.now();
 
@@ -244,7 +276,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
      *
      */
     function render() {
-        if (!ctx) throw new Error('Canvas context lost');
+        if (!ctx) throw 'Canvas context lost';
 
         if (resize.needsResize) {
             depthTexture = device.createTexture({
@@ -256,7 +288,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
             device.queue.writeBuffer(resolutionBuffer, 0, resize.resolution);
         }
 
-        device.queue.writeBuffer(cameraBuffer, 0, cameraData);
+        device.queue.writeBuffer(modelTransformBuffer, 0, modelTransformData);
 
         const encoder = device.createCommandEncoder();
 

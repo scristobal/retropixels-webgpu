@@ -1,15 +1,11 @@
 #version 300 es
 
-#pragma vscode_glsllint_stage: vert
-
 layout (location = 0) in vec3 a_coord;
 layout (location = 1) in vec2 a_texCoord;
 
-uniform float u_scaling;
 uniform vec2 u_resolution;
-
+uniform float u_scaling;
 uniform vec2 u_modelSize;
-
 uniform mat4 u_modelTransform;
 uniform mat3 u_texTransform;
 

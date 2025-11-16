@@ -34,7 +34,7 @@ function movement(initial: { center: { x: number; y: number; z: number }; speed:
             this._transform.identity.translate(this.center.x, this.center.y, this.center.z).rotate(0, 0, 1, this.angle);
         },
 
-        get transform(): Float32Array {
+        get transform(): Float32Array <ArrayBuffer>{
             return this._transform.data;
         }
     };

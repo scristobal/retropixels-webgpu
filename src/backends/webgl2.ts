@@ -65,20 +65,18 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     gl.bindVertexArray(verticesArrayObject);
 
     // vao - position coordinates
-    const verticesPositionBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, verticesPositionBuffer);
+    const verticesBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, verticesBuffer);
 
     const verticesAttributeLocation = gl.getAttribLocation(program, 'a_coord');
     gl.enableVertexAttribArray(verticesAttributeLocation);
-    gl.vertexAttribPointer(verticesAttributeLocation, 3, gl.FLOAT, false, 0, 0);
-
-    // vao - texture coordinates
-    const verticesTextureBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, verticesTextureBuffer);
+    // stride: 5 floats (xyzuv) = 20 bytes, offset: 0 (xyz starts at beginning)
+    gl.vertexAttribPointer(verticesAttributeLocation, 3, gl.FLOAT, false, 3 * 4 + 2 * 4, 0);
 
     const verticesTextureLocation = gl.getAttribLocation(program, 'a_texCoord');
     gl.enableVertexAttribArray(verticesTextureLocation);
-    gl.vertexAttribPointer(verticesTextureLocation, 2, gl.FLOAT, false, 0, 0);
+    // stride: 5 floats (xyzuv) = 20 bytes, offset: 12 bytes (uv starts after xyz)
+    gl.vertexAttribPointer(verticesTextureLocation, 2, gl.FLOAT, false, 3 * 4 + 2 * 4, 3 * 4);
 
     // vao - indexing
     const indicesBuffer = gl.createBuffer();
@@ -135,53 +133,37 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
         // load canvas scale value
         const scalingData = 4;
-
         gl.uniform1f(scalingUniformLocation, scalingData);
 
         // load model, vertices and texture coordinates and indexing
         gl.bindVertexArray(verticesArrayObject);
 
-        // vertices coordinates
-        gl.bindBuffer(gl.ARRAY_BUFFER, verticesPositionBuffer);
-        // 3--0
-        // |  |
-        // 2--1
-        //                                             x  y  z
-        //                                            |       |         |          |         |
-        const verticesPositionData = new Float32Array([1, 1, 0, 1, -1, 0, -1, -1, 0, -1, 1, 0]);
-
-        gl.bufferData(gl.ARRAY_BUFFER, verticesPositionData, gl.STATIC_DRAW);
-
-        // texture coordinates
-        gl.bindBuffer(gl.ARRAY_BUFFER, verticesTextureBuffer);
-
-        // 3--0
-        // |  |
-        // 2--1
-        //                                            u  v
-        //                                           |    |     |     |     |
-        const verticesTextureData = new Float32Array([1, 0, 1, 1, 0, 1, 0, 0]);
-        gl.bufferData(gl.ARRAY_BUFFER, verticesTextureData, gl.STATIC_DRAW);
+        // vertices
+        //  3--0
+        //  |  |
+        //  2--1
+        //                                     x  y  z  u  v
+        //                                    |       :     |         :     |          :     |         :     |
+        const verticesData = new Float32Array([1, 1, 0, 1, 0, 1, -1, 0, 1, 1, -1, -1, 0, 0, 1, -1, 1, 0, 0, 0]);
+        gl.bindBuffer(gl.ARRAY_BUFFER, verticesBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, verticesData, gl.STATIC_DRAW);
 
         // vertex indices
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indicesBuffer);
-
-        // 3 - - - 0
-        // | A   / |
-        // |   /   |
-        // | /   B |
-        // 2 - - - 1
+        //  3 - - - 0
+        //  | A   / |
+        //  |   /   |
+        //  | /   B |
+        //  2 - - - 1
         //                                      A        B
         //                                  |       |        |
         const indicesData = new Uint16Array([3, 2, 0, 2, 1, 0]);
-
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indicesBuffer);
         gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indicesData, gl.STATIC_DRAW);
 
         // texture
         gl.activeTexture(textureIndex);
 
         const imgData = await loadImageData('/sprite-sheet.png');
-
         if (!imgData) throw 'Failed to load sprite sheet';
 
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, imgData.width, imgData.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, imgData);

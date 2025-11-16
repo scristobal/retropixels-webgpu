@@ -1,7 +1,5 @@
 #version 300 es
 
-#pragma vscode_glsllint_stage: frag
-
 #ifndef GL_FRAGMENT_PRECISION_HIGH
     precision mediump float;
 #else
