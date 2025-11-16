@@ -28,11 +28,14 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     //  3--0
     //  |  |
     //  2--1
+    //                                           0              1               2                3
     //                                     x  y  z  u  v
     //                                    |       :     |         :     |          :     |         :     |
-    const verticesData = new Float32Array([1, 1, 1, 1, 0, 1, -1, 1, 1, 1, -1, -1, 1, 0, 1, -1, 1, 1, 0, 0]);
+    // const verticesData = new Float32Array([1, 1, 1, 1, 1, 1, -1, 1, 1, 0, -1, -1, 1, 0, 0, -1, 1, 1, 1, 0]);
+    const verticesData = new Float32Array([1, 1, 0, 1, 0, 1, -1, 0, 1, 1, -1, -1, 0, 0, 1, -1, 1, 0, 0, 0]);
 
     const verticesBuffer: GPUBuffer = device.createBuffer({
+        label: 'vertices',
         size: verticesData.byteLength,
         usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST
     });
@@ -59,13 +62,16 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     // vertices data indexing
 
     // 3 - - - 0
-    // |     / |
+    // | A   / |
     // |   /   |
-    // | /     |
+    // | /   B |
     // 2 - - - 1
+    //                                      A        B
+    //                                  |       |        |
     const indicesData = new Uint32Array([3, 2, 0, 2, 1, 0]);
 
     const indicesBuffer: GPUBuffer = device.createBuffer({
+        label: 'indices',
         size: indicesData.byteLength,
         usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST
     });
@@ -76,7 +82,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     // textures
 
-    const url = '/avatar-1x.png';
+    const url = '/sprite-sheet.png';
     const source = await loadImageBitmap(url);
 
     const texture = device.createTexture({
@@ -92,6 +98,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     // depth texture
 
     let depthTexture = device.createTexture({
+        label: 'depth',
         size: resize.resolution,
         format: 'depth32float',
         usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.RENDER_ATTACHMENT
@@ -99,14 +106,16 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     // uniforms - resolution
     const resolutionBuffer: GPUBuffer = device.createBuffer({
+        label: 'resolution',
         size: resize.resolution.byteLength,
         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
     device.queue.writeBuffer(resolutionBuffer, 0, resize.resolution);
 
     // uniforms - scaling
-    const scale = new Float32Array([4]);
+    const scale = new Float32Array([10]);
     const scalingBuffer: GPUBuffer = device.createBuffer({
+        label: 'scale',
         size: scale.byteLength,
         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
@@ -117,6 +126,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     // uniforms - model size
     const modelSize = new Float32Array(spriteSystem.size);
     const modelSizeBuffer: GPUBuffer = device.createBuffer({
+        label: 'model size',
         size: modelSize.byteLength,
         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
@@ -132,10 +142,20 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     // uniforms - model transformation matrix
     const modelTransformData = movementSystem.transform;
     const modelTransformBuffer = device.createBuffer({
+        label: 'model transform',
         size: modelTransformData.byteLength,
         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
     device.queue.writeBuffer(modelTransformBuffer, 0, modelTransformData);
+
+    // uniforms - texture transformation matrix
+    const textureTransformData = spriteSystem.transform;
+    const textureTransformBuffer = device.createBuffer({
+        label: 'texture transform',
+        size: textureTransformData.byteLength,
+        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+    });
+    device.queue.writeBuffer(textureTransformBuffer, 0, textureTransformData);
 
     // bindings
 
@@ -163,11 +183,16 @@ async function renderer(canvasElement: HTMLCanvasElement) {
             },
             {
                 binding: 4,
+                visibility: GPUShaderStage.VERTEX,
+                buffer: { type: 'uniform' }
+            },
+            {
+                binding: 5,
                 visibility: GPUShaderStage.FRAGMENT,
                 sampler: { type: 'filtering' }
             },
             {
-                binding: 5,
+                binding: 6,
                 visibility: GPUShaderStage.FRAGMENT,
                 texture: { sampleType: 'float' }
             }
@@ -195,10 +220,14 @@ async function renderer(canvasElement: HTMLCanvasElement) {
             },
             {
                 binding: 4,
-                resource: device.createSampler()
+                resource: { buffer: textureTransformBuffer }
             },
             {
                 binding: 5,
+                resource: device.createSampler()
+            },
+            {
+                binding: 6,
                 resource: texture.createView()
             }
         ]
@@ -253,8 +282,6 @@ async function renderer(canvasElement: HTMLCanvasElement) {
      *
      */
 
-
-
     let lastUpdate = performance.now();
 
     function update(now: number) {
@@ -289,6 +316,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         }
 
         device.queue.writeBuffer(modelTransformBuffer, 0, modelTransformData);
+        device.queue.writeBuffer(textureTransformBuffer, 0, textureTransformData);
 
         const encoder = device.createCommandEncoder();
 
@@ -352,7 +380,10 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         lastUpdate = performance.now();
     }
 
-    return gameLoop;
+    return async function () {
+        // await load();
+        gameLoop(performance.now());
+    };
 }
 
 export { renderer };

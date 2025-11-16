@@ -4,24 +4,8 @@ function m4() {
         op: new Float32Array(16),
 
         get identity() {
-            this.data.set([
-                1,
-                0,
-                0,
-                0, // <-- column 0
-                0,
-                1,
-                0,
-                0, // <-- column 1
-                0,
-                0,
-                1,
-                0, // <-- column 2
-                0,
-                0,
-                0,
-                1 // <-- column 3
-            ]);
+            //            |          |           |           |           |
+            this.data.set([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
 
             return this;
         },
@@ -59,64 +43,32 @@ function m4() {
                 ux * ux * (1 - c) + c,
                 ux * uy * (1 - c) + uz * s,
                 ux * uz * (1 - c) - uy * s,
-                0, // <-- column 0
+                0,
                 ux * uy * (1 - c) - uz * s,
                 uy * uy * (1 - c) + c,
                 uy * uz * (1 - c) + ux * s,
-                0, // <-- column 1
+                0,
                 ux * uz * (1 - c) + uy * s,
                 uy * uz * (1 - c) - ux * s,
                 uz * uz * (1 - c) + c,
-                0, // <-- column 2
                 0,
                 0,
                 0,
-                1 // <-- column 3
+                0,
+                1
             ]);
 
             return this.__multiply();
         },
         scale(sx: number, sy: number, sz: number) {
-            this.op.set([
-                sx,
-                0,
-                0,
-                0, // <-- column 0
-                0,
-                sy,
-                0,
-                0, // <-- column 1
-                0,
-                0,
-                sz,
-                0, // <-- column 2
-                0,
-                0,
-                0,
-                1 // <-- column 3
-            ]);
+            //          |           |            |            |           |
+            this.op.set([sx, 0, 0, 0, 0, sy, 0, 0, 0, 0, sz, 0, 0, 0, 0, 1]);
 
             return this.__multiply();
         },
         translate(tx: number, ty: number, tz: number) {
-            this.op.set([
-                1,
-                0,
-                0,
-                0, // <-- column 0
-                0,
-                1,
-                0,
-                0, // <-- column 1
-                0,
-                0,
-                1,
-                0, // <-- column 2
-                tx,
-                ty,
-                tz,
-                1 // <-- column 3
-            ]);
+            //          |           |            |            |           |
+            this.op.set([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, tx, ty, tz, 1]);
 
             return this.__multiply();
         }

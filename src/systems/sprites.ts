@@ -22,7 +22,7 @@ function spriteSheet(atlas: Atlas) {
         _sprites: atlas.sprites,
         _imgSize: atlas.size,
 
-        transform: new Float32Array(9),
+        transform: new Float32Array(16),
 
         _currentFrameTime: 0,
         _currentFrameName: Object.keys(atlas.frames)[0],
@@ -34,17 +34,14 @@ function spriteSheet(atlas: Atlas) {
                 this._currentFrameTime = this._currentFrame.duration - this._currentFrameTime;
                 this._currentFrameName = this._currentFrame.next;
 
-                this.transform.set([
-                    this._currentSprite.size[0] / this._imgSize[0],
-                    0,
-                    0,
-                    0,
-                    this._currentSprite.size[1] / this._imgSize[1],
-                    0,
-                    this._currentSprite.location[0] / this._imgSize[0],
-                    this._currentSprite.location[1] / this._imgSize[1],
-                    1
-                ]);
+                const dx = this._currentSprite.size[0] / this._imgSize[0];
+                const dy = this._currentSprite.size[1] / this._imgSize[1];
+
+                const tx = this._currentSprite.location[0] / this._imgSize[0];
+                const ty = this._currentSprite.location[1] / this._imgSize[1];
+
+                //                 |           |            |             |           |
+                this.transform.set([dx, 0, 0, 0, 0, dy, 0, 0, tx, ty, 1, 0, 0, 0, 0, 0]);
             }
         },
 

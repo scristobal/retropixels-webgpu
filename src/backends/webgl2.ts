@@ -100,9 +100,6 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     // uniforms - texture
     const textureIndex = gl.TEXTURE0;
 
-    const textureLocation = gl.getUniformLocation(program, 'u_texture');
-    gl.uniform1i(textureLocation, textureIndex);
-
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
     const texture = gl.createTexture();
@@ -132,7 +129,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         if (!gl) throw 'WebGL2 context lost';
 
         // load canvas scale value
-        const scalingData = 4;
+        const scalingData = 10;
         gl.uniform1f(scalingUniformLocation, scalingData);
 
         // load model, vertices and texture coordinates and indexing
@@ -142,6 +139,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         //  3--0
         //  |  |
         //  2--1
+        //                                           0              1               2                3
         //                                     x  y  z  u  v
         //                                    |       :     |         :     |          :     |         :     |
         const verticesData = new Float32Array([1, 1, 0, 1, 0, 1, -1, 0, 1, 1, -1, -1, 0, 0, 1, -1, 1, 0, 0, 0]);
@@ -224,7 +222,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         gl.clearColor(0, 0, 0, 0);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-        gl.uniformMatrix3fv(texTransformUniformLocation, false, spriteSystem.transform);
+        gl.uniformMatrix4fv(texTransformUniformLocation, false, spriteSystem.transform);
 
         gl.uniform2fv(spriteSizeUniformLocation, spriteSystem.size);
 
