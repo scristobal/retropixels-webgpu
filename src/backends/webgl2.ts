@@ -8,6 +8,9 @@ import { movement } from 'src/systems/movement';
 import { spriteSheet } from 'src/systems/sprites';
 
 async function renderer(canvasElement: HTMLCanvasElement) {
+    /**
+     * Initialization
+     */
     const gl = canvasElement.getContext('webgl2');
     if (!gl) throw 'WebGL2 not supported in this browser';
 
@@ -159,6 +162,8 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     });
 
     let lastUpdate = performance.now();
+    const frameTimes = new Float32Array(1024);
+    let frameTimesInd = 0;
 
     /**
      * Update loop function
@@ -174,6 +179,16 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         if (inputHandler.turnLeft) movementSystem.rotateCounterClockWise(delta);
 
         spriteSystem.update(delta);
+
+        frameTimes[++frameTimesInd] = performance.now() - now;
+
+        if (frameTimesInd === frameTimes.length) {
+            const average = frameTimes.reduce((acc, cur) => acc + cur, 0) / frameTimes.length;
+            console.log(`Last ${frameTimes.length.toFixed(0)} frames draw average time was ${average.toFixed(3)}ms (roughly equivalent to ${(1000 / average).toFixed(3)} frames per second)`);
+            frameTimesInd = 0;
+        }
+
+        lastUpdate = performance.now();
     }
 
     // const fb = gl.createFramebuffer();
@@ -185,9 +200,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     // gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, canvasElement.width, canvasElement.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
 
     /**
-     *
      * Render loop
-     *
      */
     function render() {
         if (!gl) throw 'Canvas context lost';
@@ -211,33 +224,14 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
     }
 
-    const frameTimes = new Float32Array(1024);
-    let frameTimesInd = 0;
-
     /**
-     *
      * Game loop
-     *
      */
-    function gameLoop(now: number) {
+    return function gameLoop(now: number) {
         update(now);
         render();
 
         requestAnimationFrame(gameLoop);
-
-        frameTimes[++frameTimesInd] = performance.now() - now;
-
-        if (frameTimesInd === frameTimes.length) {
-            const average = frameTimes.reduce((acc, cur) => acc + cur, 0) / frameTimes.length;
-            console.log(`Last ${frameTimes.length.toFixed(0)} frames draw average time was ${average.toFixed(3)}ms (roughly equivalent to ${(1000 / average).toFixed(3)} frames per second)`);
-            frameTimesInd = 0;
-        }
-
-        lastUpdate = performance.now();
-    }
-
-    return function () {
-        gameLoop(performance.now());
     };
 }
 

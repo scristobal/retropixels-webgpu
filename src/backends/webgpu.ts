@@ -8,9 +8,7 @@ import { spriteSheet } from 'src/systems/sprites';
 
 async function renderer(canvasElement: HTMLCanvasElement) {
     /**
-     *
-     * WebGPU setup
-     *
+     * Initialization
      */
 
     const adapter = await navigator.gpu.requestAdapter();
@@ -378,19 +376,13 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     }
 
     /**
-     *
-     * Main loop (main function return as Promise)
-     *
+     * Game loop
      */
-    function gameLoop(now: number) {
+    return function gameLoop(now: number) {
         update(now);
         render();
 
         requestAnimationFrame(gameLoop);
-    }
-
-    return function () {
-        gameLoop(performance.now());
     };
 }
 
