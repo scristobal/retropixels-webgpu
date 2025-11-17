@@ -3,4 +3,5 @@ words = [
     "shaders",
     "vao",
     "webgl",
+    "webgpu",
 ]

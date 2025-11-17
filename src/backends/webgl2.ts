@@ -8,13 +8,11 @@ import { movement } from 'src/systems/movement';
 import { spriteSheet } from 'src/systems/sprites';
 
 async function renderer(canvasElement: HTMLCanvasElement) {
-    /**
-     * Initialization
-     */
+    // init
     const gl = canvasElement.getContext('webgl2');
     if (!gl) throw 'WebGL2 not supported in this browser';
 
-    // Shaders - vertex shader
+    // shaders - vertex shader
     const vertexShader = gl.createShader(gl.VERTEX_SHADER);
     if (!vertexShader) throw 'Failed to create shader';
 
@@ -40,15 +38,11 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         throw 'Failed to compile fragment shader';
     }
 
-    // shaders - program
+    // program
     const program = gl.createProgram();
     if (!program) throw 'Failed to create program';
 
-    // const verticesAttributeLocation = 0;
-    // gl.bindAttribLocation(program, verticesAttributeLocation, 'a_coord');
 
-    // const verticesTextureLocation = 1;
-    // gl.bindAttribLocation(program, verticesTextureLocation, 'a_texCoord');
 
     gl.attachShader(program, vertexShader);
     gl.attachShader(program, fragmentShader);
@@ -63,33 +57,46 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     gl.useProgram(program);
 
-    // Vertex array object (vao)
-    const verticesBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, verticesBuffer);
+    // init - systems
+    const movementSystem = movement({
+        center: { x: 0, y: 0, z: 0 },
+        speed: { x: 0.02, y: 0.02, z: 0 },
+        angle: 0,
+        rotationSpeed: 0.01
+    });
 
-    // vertices
+    const url = '/sprite-sheet.png';
+    const imgData = await loadImageData(url);
+    if (!imgData) throw 'Failed to load sprite sheet';
+
+    const spriteSystem = spriteSheet(animationData);
+
+    const resize = resizeHandler(gl.getParameter(gl.MAX_TEXTURE_SIZE), canvasElement);
+
+    // vertices array object (vao)- position and texture coordinates
+    //
     //  3--0
     //  |  |
     //  2--1
     //                                     x  y  z  u  v
     //                                    |------0------|-------1-------|-------2--------|-------3-------|
     const verticesData = new Float32Array([1, 1, 0, 1, 0, 1, -1, 0, 1, 1, -1, -1, 0, 0, 1, -1, 1, 0, 0, 0]);
-
+    const verticesBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, verticesBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, verticesData, gl.STATIC_DRAW);
 
-    const verticesAttributeLocation = gl.getAttribLocation(program, 'a_coord');
-    gl.enableVertexAttribArray(verticesAttributeLocation);
-    gl.vertexAttribPointer(verticesAttributeLocation, 3, gl.FLOAT, false, 3 * 4 + 2 * 4, 0);
+    const verticesCoordsLocation = 0;
+    gl.bindAttribLocation(program, verticesCoordsLocation, 'a_coord');
+    gl.enableVertexAttribArray(verticesCoordsLocation);
+    gl.vertexAttribPointer(verticesCoordsLocation, 3, gl.FLOAT, false, 3 * 4 + 2 * 4, 0);
 
-    const verticesTextureLocation = gl.getAttribLocation(program, 'a_texCoord');
-    gl.enableVertexAttribArray(verticesTextureLocation);
-    gl.vertexAttribPointer(verticesTextureLocation, 2, gl.FLOAT, false, 3 * 4 + 2 * 4, 3 * 4);
+    const verticesTextureCoordsLocation = 1;
+    gl.bindAttribLocation(program, verticesTextureCoordsLocation, 'a_texCoord');
+    gl.enableVertexAttribArray(verticesTextureCoordsLocation);
+    gl.vertexAttribPointer(verticesTextureCoordsLocation, 2, gl.FLOAT, false, 3 * 4 + 2 * 4, 3 * 4);
 
     // vao - indexing
-    const indicesBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indicesBuffer);
-
-    // vertex indices
+    //
     //  3 - - - 0
     //  | A   / |
     //  |   /   |
@@ -97,6 +104,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     //  2 - - - 1
     //                                  |---A---|----B---|
     const indicesData = new Uint16Array([3, 2, 0, 2, 1, 0]);
+    const indicesBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indicesBuffer);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indicesData, gl.STATIC_DRAW);
 
@@ -114,7 +122,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     const scalingUniformLocation = gl.getUniformLocation(program, 'u_scaling');
     gl.uniform1f(scalingUniformLocation, scalingData);
 
-    // uniforms - xyz vertex position transform
+    // uniforms - vertex position transform
     const positionTransformUniformLocation = gl.getUniformLocation(program, 'u_modelTransform');
 
     // uniforms - texture
@@ -134,41 +142,25 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 
-    // texture
+    // texture - sprites
     gl.activeTexture(textureIndex);
-
-    const imgData = await loadImageData('/sprite-sheet.png');
-    if (!imgData) throw 'Failed to load sprite sheet';
 
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, imgData.width, imgData.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, imgData);
 
     // uniforms - texture size
     const spriteSizeUniformLocation = gl.getUniformLocation(program, 'u_modelSize');
 
-    // uniform - uv texture transform
+    // uniform - texture transformation matrix
     const texTransformUniformLocation = gl.getUniformLocation(program, 'u_texTransform');
-
-    const resize = resizeHandler(gl.getParameter(gl.MAX_TEXTURE_SIZE), canvasElement);
-
-    const spriteSystem = spriteSheet(animationData);
-
-    const movementSystem = movement({
-        center: { x: 0, y: 0, z: 0 },
-        speed: { x: 0.02, y: 0.02, z: 0 },
-        angle: 0,
-        rotationSpeed: 0.01
-    });
 
     let lastUpdate = performance.now();
     const frameTimes = new Float32Array(1024);
     let frameTimesInd = 0;
 
-    /**
-     * Update loop function
-     */
     function update(now: number) {
         const delta = now - lastUpdate;
 
+        // movement system affects the position of the model
         if (inputHandler.right) movementSystem.moveRight(delta);
         if (inputHandler.left) movementSystem.moveLeft(delta);
         if (inputHandler.up) movementSystem.moveUp(delta);
@@ -176,8 +168,10 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         if (inputHandler.turnRight) movementSystem.rotateClockWise(delta);
         if (inputHandler.turnLeft) movementSystem.rotateCounterClockWise(delta);
 
+        // sprite system affects the animation
         spriteSystem.update(delta);
 
+        // performance report
         frameTimes[++frameTimesInd] = performance.now() - now;
 
         if (frameTimesInd === frameTimes.length) {
@@ -197,9 +191,6 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     // gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, canvasElement.width, canvasElement.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
 
-    /**
-     * Render loop
-     */
     function render() {
         if (!gl) throw 'Canvas context lost';
 
@@ -214,17 +205,12 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
         gl.uniformMatrix4fv(texTransformUniformLocation, false, spriteSystem.transform);
-
         gl.uniform2fv(spriteSizeUniformLocation, spriteSystem.size);
-
         gl.uniformMatrix4fv(positionTransformUniformLocation, false, movementSystem.transform);
 
         gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
     }
 
-    /**
-     * Game loop
-     */
     return function gameLoop(now: number) {
         update(now);
         render();

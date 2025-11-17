@@ -7,10 +7,7 @@ import { movement } from 'src/systems/movement';
 import { spriteSheet } from 'src/systems/sprites';
 
 async function renderer(canvasElement: HTMLCanvasElement) {
-    /**
-     * Initialization
-     */
-
+    // init - context
     const adapter = await navigator.gpu.requestAdapter();
     if (!adapter) throw 'Unable to request adapter';
 
@@ -23,7 +20,23 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     const format = navigator.gpu.getPreferredCanvasFormat();
     ctx.configure({ format, device });
 
-    // vertices
+    // init - systems
+    const movementSystem = movement({
+        center: { x: 0, y: 0, z: 0 },
+        speed: { x: 0.02, y: 0.02, z: 0 },
+        angle: 0,
+        rotationSpeed: 0.01
+    });
+
+    const url = '/sprite-sheet.png';
+    const source = await loadImageBitmap(url);
+
+    const spriteSystem = spriteSheet(animationData);
+
+    const resize = resizeHandler(device.limits.maxTextureDimension2D, canvasElement);
+
+    // vertices data - position and texture coordinates
+    //
     //  3--0
     //  |  |
     //  2--1
@@ -57,7 +70,8 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         ]
     };
 
-    // vertices data indexing
+    // vertices data - indexing
+    //
     //  3 - - - 0
     //  | A   / |
     //  |   /   |
@@ -77,9 +91,6 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     const indexFormat: GPUIndexFormat = 'uint32';
 
     // texture - sprites
-    const url = '/sprite-sheet.png';
-    const source = await loadImageBitmap(url);
-
     const texture = device.createTexture({
         label: url,
         format: format,
@@ -89,7 +100,6 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     device.queue.copyExternalImageToTexture({ source }, { texture }, { width: source.width, height: source.height });
 
-    const resize = resizeHandler(device.limits.maxTextureDimension2D, canvasElement);
 
     // texture - depth
     let depthTexture = device.createTexture({
@@ -116,8 +126,6 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     });
     device.queue.writeBuffer(scalingBuffer, 0, scale);
 
-    const spriteSystem = spriteSheet(animationData);
-
     // uniforms - model size
     const modelSize = new Float32Array(spriteSystem.size);
     const modelSizeBuffer: GPUBuffer = device.createBuffer({
@@ -126,13 +134,6 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
     device.queue.writeBuffer(modelSizeBuffer, 0, modelSize);
-
-    const movementSystem = movement({
-        center: { x: 0, y: 0, z: 0 },
-        speed: { x: 0.02, y: 0.02, z: 0 },
-        angle: 0,
-        rotationSpeed: 0.01
-    });
 
     // uniforms - model transformation matrix
     const modelTransformData = movementSystem.transform;
@@ -152,8 +153,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     });
     device.queue.writeBuffer(textureTransformBuffer, 0, textureTransformData);
 
-    // bindings
-
+    // bindings - vertex
     const vertexBindGroupLayout: GPUBindGroupLayout = device.createBindGroupLayout({
         entries: [
             {
@@ -210,6 +210,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         ]
     });
 
+    // bindings - fragment
     const fragmentBindGroupLayout: GPUBindGroupLayout = device.createBindGroupLayout({
         entries: [
             {
@@ -245,7 +246,6 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     });
 
     // pipeline
-
     const pipelineLayout: GPUPipelineLayout = device.createPipelineLayout({ bindGroupLayouts: [vertexBindGroupLayout, fragmentBindGroupLayout] });
 
     const pipeline: GPURenderPipeline = device.createRenderPipeline({
@@ -286,14 +286,10 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     const frameTimes = new Float32Array(1024);
     let frameTimesInd = 0;
 
-    /**
-     *
-     * Update loop
-     *
-     */
     function update(now: number) {
         const delta = now - lastUpdate;
 
+        // movement system affects the position of the model
         if (inputHandler.right) movementSystem.moveRight(delta);
         if (inputHandler.left) movementSystem.moveLeft(delta);
         if (inputHandler.up) movementSystem.moveUp(delta);
@@ -301,8 +297,10 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         if (inputHandler.turnRight) movementSystem.rotateClockWise(delta);
         if (inputHandler.turnLeft) movementSystem.rotateCounterClockWise(delta);
 
+        // sprite system affects the animation
         spriteSystem.update(delta);
 
+        // performance report
         frameTimes[++frameTimesInd] = performance.now() - now;
 
         if (frameTimesInd === frameTimes.length) {
@@ -314,11 +312,6 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         lastUpdate = performance.now();
     }
 
-    /**
-     *
-     * Render loop
-     *
-     */
     function render() {
         if (!ctx) throw 'Canvas context lost';
 
@@ -373,9 +366,6 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         device.queue.submit([commandBuffer]);
     }
 
-    /**
-     * Game loop
-     */
     return function gameLoop(now: number) {
         update(now);
         render();
