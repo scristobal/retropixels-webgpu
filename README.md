@@ -6,9 +6,12 @@ Just experimenting with WebGL2 and WebGPU, expect very rough edges.
 
 -   [x] WebGL2 backend
 -   [x] WebGPU backend
+-   [x] Window resize 
 -   [ ] Depth buffer
--   [x] Orthogonal camera
+-   [ ] Stencil buffer
 -   [x] Sprite animations
 -   [x] Model position control 
--   [ ] Basic camera (orthogonal?) with some parallax effect
+-   [ ] Orthogonal camera
+-   [ ] Camera position control
+-   [ ] Parallax
 -   [ ] 2Dish Lighting, casting shadows, semi-normal maps

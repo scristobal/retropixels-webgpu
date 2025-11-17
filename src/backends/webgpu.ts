@@ -1,6 +1,6 @@
 import animationData from 'src/data/animation.json';
+import { canvasManager } from 'src/helpers/canvas';
 import { loadImageBitmap } from 'src/helpers/image';
-import { resizeHandler } from 'src/helpers/resize';
 import shaderCode from 'src/shaders/shaders.wgsl?raw';
 import { inputHandler } from 'src/systems/input';
 import { movement } from 'src/systems/movement';
@@ -33,7 +33,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     const spriteSystem = spriteSheet(animationData);
 
-    const resize = resizeHandler(device.limits.maxTextureDimension2D, canvasElement);
+    const screen = canvasManager(device.limits.maxTextureDimension2D, canvasElement);
 
     // vertices data - position and texture coordinates
     //
@@ -100,11 +100,10 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     device.queue.copyExternalImageToTexture({ source }, { texture }, { width: source.width, height: source.height });
 
-
     // texture - depth
     let depthTexture = device.createTexture({
         label: 'depth',
-        size: resize.resolution,
+        size: screen.resolution,
         format: 'depth32float',
         usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.RENDER_ATTACHMENT
     });
@@ -112,10 +111,10 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     // uniforms - resolution
     const resolutionBuffer: GPUBuffer = device.createBuffer({
         label: 'resolution',
-        size: resize.resolution.byteLength,
+        size: screen.resolution.byteLength,
         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
-    device.queue.writeBuffer(resolutionBuffer, 0, resize.resolution);
+    device.queue.writeBuffer(resolutionBuffer, 0, screen.resolution);
 
     // uniforms - scaling
     const scale = new Float32Array([10]);
@@ -315,14 +314,14 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     function render() {
         if (!ctx) throw 'Canvas context lost';
 
-        if (resize.needsResize) {
+        if (screen.needsResize) {
             depthTexture = device.createTexture({
-                size: resize.resolution,
+                size: screen.resolution,
                 format: depthTexture.format,
                 usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING
             });
 
-            device.queue.writeBuffer(resolutionBuffer, 0, resize.resolution);
+            device.queue.writeBuffer(resolutionBuffer, 0, screen.resolution);
         }
 
         device.queue.writeBuffer(modelTransformBuffer, 0, modelTransformData);

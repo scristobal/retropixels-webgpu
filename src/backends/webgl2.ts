@@ -1,6 +1,6 @@
 import animationData from 'src/data/animation.json';
+import { canvasManager } from 'src/helpers/canvas';
 import { loadImageData } from 'src/helpers/image';
-import { resizeHandler } from 'src/helpers/resize';
 import fragmentShaderCode from 'src/shaders/fragment.glsl?raw';
 import vertexShaderCode from 'src/shaders/vertex.glsl?raw';
 import { inputHandler } from 'src/systems/input';
@@ -42,8 +42,6 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     const program = gl.createProgram();
     if (!program) throw 'Failed to create program';
 
-
-
     gl.attachShader(program, vertexShader);
     gl.attachShader(program, fragmentShader);
 
@@ -71,7 +69,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     const spriteSystem = spriteSheet(animationData);
 
-    const resize = resizeHandler(gl.getParameter(gl.MAX_TEXTURE_SIZE), canvasElement);
+    const screen = canvasManager(gl.getParameter(gl.MAX_TEXTURE_SIZE), canvasElement);
 
     // vertices array object (vao)- position and texture coordinates
     //
@@ -196,9 +194,9 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
-        if (resize.needsResize) {
+        if (screen.needsResize) {
             gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-            gl.uniform2fv(resolutionUniformLocation, resize.resolution);
+            gl.uniform2fv(resolutionUniformLocation, screen.resolution);
         }
 
         gl.clearColor(0, 0, 0, 0);

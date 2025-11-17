@@ -4,7 +4,7 @@
  *
  */
 
-function resizeHandler(maxTextureDimension: number, canvasElement: HTMLCanvasElement) {
+function canvasManager(maxTextureDimension: number, canvasElement: HTMLCanvasElement) {
     const canvasDisplaySize = { width: canvasElement.width, height: canvasElement.height };
 
     const observer = new ResizeObserver((entries) => {
@@ -38,4 +38,4 @@ function resizeHandler(maxTextureDimension: number, canvasElement: HTMLCanvasEle
     };
 }
 
-export { resizeHandler };
+export { canvasManager };
