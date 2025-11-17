@@ -1,7 +1,7 @@
 import { renderer } from 'src/backends/webgl2';
 
 const version = import.meta.env.VITE_APP_VERSION;
-console.log(`Using version ${version}`);
+console.log(`Version ${version}`);
 
 const initTime = performance.now();
 

@@ -23,14 +23,14 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     const format = navigator.gpu.getPreferredCanvasFormat();
     ctx.configure({ format, device });
 
+    // vertices
     //  3--0
     //  |  |
     //  2--1
-    //                                           0              1               2                3
     //                                     x  y  z  u  v
-    //                                    |       :     |         :     |          :     |         :     |
-    // const verticesData = new Float32Array([1, 1, 1, 1, 1, 1, -1, 1, 1, 0, -1, -1, 1, 0, 0, -1, 1, 1, 1, 0]);
+    //                                    |------0------|-------1-------|-------2--------|-------3-------|
     const verticesData = new Float32Array([1, 1, 0, 1, 0, 1, -1, 0, 1, 1, -1, -1, 0, 0, 1, -1, 1, 0, 0, 0]);
+    // const verticesData = new Float32Array([1, 1, 1, 1, 1, 1, -1, 1, 1, 0, -1, -1, 1, 0, 0, -1, 1, 1, 1, 0]);
 
     const verticesBuffer: GPUBuffer = device.createBuffer({
         label: 'vertices',
@@ -58,14 +58,12 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     };
 
     // vertices data indexing
-
-    // 3 - - - 0
-    // | A   / |
-    // |   /   |
-    // | /   B |
-    // 2 - - - 1
-    //                                      A        B
-    //                                  |       |        |
+    //  3 - - - 0
+    //  | A   / |
+    //  |   /   |
+    //  | /   B |
+    //  2 - - - 1
+    //                                  |---A---|----B---|
     const indicesData = new Uint32Array([3, 2, 0, 2, 1, 0]);
 
     const indicesBuffer: GPUBuffer = device.createBuffer({
@@ -309,7 +307,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
         if (frameTimesInd === frameTimes.length) {
             const average = frameTimes.reduce((acc, cur) => acc + cur, 0) / frameTimes.length;
-            console.log(`Last ${frameTimes.length.toFixed(0)} frames draw average time was ${average.toFixed(3)}ms (roughly equivalent to ${(1000 / average).toFixed(3)} frames per second)`);
+            console.log(`${average.toFixed(3)}ms ~${(1000 / average).toFixed(3)}fps`);
             frameTimesInd = 0;
         }
 

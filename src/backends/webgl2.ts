@@ -71,9 +71,8 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     //  3--0
     //  |  |
     //  2--1
-    //                                           0              1               2                3
     //                                     x  y  z  u  v
-    //                                    |       :     |         :     |          :     |         :     |
+    //                                    |------0------|-------1-------|-------2--------|-------3-------|
     const verticesData = new Float32Array([1, 1, 0, 1, 0, 1, -1, 0, 1, 1, -1, -1, 0, 0, 1, -1, 1, 0, 0, 0]);
 
     gl.bufferData(gl.ARRAY_BUFFER, verticesData, gl.STATIC_DRAW);
@@ -96,8 +95,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     //  |   /   |
     //  | /   B |
     //  2 - - - 1
-    //                                      A        B
-    //                                  |       |        |
+    //                                  |---A---|----B---|
     const indicesData = new Uint16Array([3, 2, 0, 2, 1, 0]);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indicesBuffer);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indicesData, gl.STATIC_DRAW);
@@ -184,7 +182,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
         if (frameTimesInd === frameTimes.length) {
             const average = frameTimes.reduce((acc, cur) => acc + cur, 0) / frameTimes.length;
-            console.log(`Last ${frameTimes.length.toFixed(0)} frames draw average time was ${average.toFixed(3)}ms (roughly equivalent to ${(1000 / average).toFixed(3)} frames per second)`);
+            console.log(`${average.toFixed(3)}ms ~${(1000 / average).toFixed(3)}fps`);
             frameTimesInd = 0;
         }
 
