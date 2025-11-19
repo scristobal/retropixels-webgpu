@@ -1,6 +1,20 @@
 import { m4 } from 'src/helpers/matrix';
 
-function movement(initial: { center: { x: number; y: number; z: number }; speed: { x: number; y: number; z: number }; angle: number; rotationSpeed: number }) {
+type Coords = {
+    x: number;
+    y: number;
+    z: number;
+};
+
+type State = {
+    center: Coords;
+    speed: Coords;
+    rotationAxis: Coords;
+    angle: number;
+    rotationSpeed: number;
+};
+
+function movement(initial: State) {
     return {
         ...initial,
         _transform: m4().identity,
@@ -31,7 +45,7 @@ function movement(initial: { center: { x: number; y: number; z: number }; speed:
         },
 
         _update() {
-            this._transform.identity.translate(this.center.x, this.center.y, this.center.z).rotate(0, 0, 1, this.angle);
+            this._transform.identity.translate(this.center.x, this.center.y, this.center.z).rotate(this.rotationAxis.x, this.rotationAxis.y, this.rotationAxis.z, this.angle);
         },
 
         get transform(): Float32Array<ArrayBuffer> {

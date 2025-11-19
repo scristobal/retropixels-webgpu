@@ -58,6 +58,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     const movementSystem = movement({
         center: { x: 0, y: 0, z: 0 },
         speed: { x: 0.02, y: 0.02, z: 0 },
+        rotationAxis: { x: 0, y: 0, z: 1 },
         angle: 0,
         rotationSpeed: 0.01
     });
@@ -183,8 +184,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     // const fbTexture = gl.createTexture();
     // gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, fbTexture, 0);
-
-    // gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, canvasElement.width, canvasElement.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    // gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, screen.resolution[0], screen.resolution[1], 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
 
     function render() {
         if (!gl) throw 'Canvas context lost';

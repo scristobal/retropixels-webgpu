@@ -1,4 +1,4 @@
-import { loadImageBitmap, loadImageData } from "src/helpers/image";
+import { loadImageBitmap, loadImageData } from 'src/helpers/image';
 
 type Frame = {
     sprite: string;
@@ -19,12 +19,11 @@ type Atlas = {
 };
 
 async function spriteSheet(atlas: Atlas) {
-
     const bitmap = await loadImageBitmap(atlas.url);
     const imgData = await loadImageData(bitmap);
     if (!imgData) throw 'Failed to load sprite sheet';
 
-    bitmapRegistry.register(bitmap, "bitmaps do not get GC ");
+    bitmapRegistry.register(bitmap, 'bitmaps do not get GC ');
 
     return {
         _frames: atlas.frames,
@@ -75,10 +74,8 @@ async function spriteSheet(atlas: Atlas) {
     };
 }
 
-
-
 // bitmaps do not get GC'd
-const bitmapRegistry = new FinalizationRegistry(token => {
+const bitmapRegistry = new FinalizationRegistry((token) => {
     if (token instanceof ImageBitmap) token.close();
 });
 

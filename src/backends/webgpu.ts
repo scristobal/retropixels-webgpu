@@ -24,6 +24,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     const movementSystem = movement({
         center: { x: 0, y: 0, z: 0 },
         speed: { x: 0.02, y: 0.02, z: 0 },
+        rotationAxis: { x: 0, y: 0, z: 1 },
         angle: 0,
         rotationSpeed: 0.01
     });
