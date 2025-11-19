@@ -1,6 +1,5 @@
 import animationData from 'src/data/animation.json';
 import { canvasManager } from 'src/helpers/canvas';
-import { loadImageData } from 'src/helpers/image';
 import fragmentShaderCode from 'src/shaders/fragment.glsl?raw';
 import vertexShaderCode from 'src/shaders/vertex.glsl?raw';
 import { inputHandler } from 'src/systems/input';
@@ -55,7 +54,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     gl.useProgram(program);
 
-    // init - systems
+    // init - movement
     const movementSystem = movement({
         center: { x: 0, y: 0, z: 0 },
         speed: { x: 0.02, y: 0.02, z: 0 },
@@ -63,12 +62,10 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         rotationSpeed: 0.01
     });
 
-    const url = '/sprite-sheet.png';
-    const imgData = await loadImageData(url);
-    if (!imgData) throw 'Failed to load sprite sheet';
+    // init - sprites
+    const spriteSystem = await spriteSheet(animationData);
 
-    const spriteSystem = spriteSheet(animationData);
-
+    // init - screen manager
     const screen = canvasManager(gl.getParameter(gl.MAX_TEXTURE_SIZE), canvasElement);
 
     // vertices array object (vao)- position and texture coordinates
@@ -143,7 +140,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     // texture - sprites
     gl.activeTexture(textureIndex);
 
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, imgData.width, imgData.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, imgData);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, spriteSystem.sheetSize.width, spriteSystem.sheetSize.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, spriteSystem.imgData);
 
     // uniforms - texture size
     const spriteSizeUniformLocation = gl.getUniformLocation(program, 'u_modelSize');
@@ -181,8 +178,8 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         lastUpdate = performance.now();
     }
 
-    // const fb = gl.createFramebuffer();
-    // gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+    const frameBuffer = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, frameBuffer);
 
     // const fbTexture = gl.createTexture();
     // gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, fbTexture, 0);
@@ -203,9 +200,10 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
         gl.uniformMatrix4fv(texTransformUniformLocation, false, spriteSystem.transform);
-        gl.uniform2fv(spriteSizeUniformLocation, spriteSystem.size);
+        gl.uniform2fv(spriteSizeUniformLocation, spriteSystem.spriteSize);
         gl.uniformMatrix4fv(positionTransformUniformLocation, false, movementSystem.transform);
 
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
     }
 

@@ -20,7 +20,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     const format = navigator.gpu.getPreferredCanvasFormat();
     ctx.configure({ format, device });
 
-    // init - systems
+    // init - movement system
     const movementSystem = movement({
         center: { x: 0, y: 0, z: 0 },
         speed: { x: 0.02, y: 0.02, z: 0 },
@@ -28,11 +28,10 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         rotationSpeed: 0.01
     });
 
-    const url = '/sprite-sheet.png';
-    const source = await loadImageBitmap(url);
+    // init - sprites
+    const spriteSystem = await spriteSheet(animationData);
 
-    const spriteSystem = spriteSheet(animationData);
-
+    // init - screen manager
     const screen = canvasManager(device.limits.maxTextureDimension2D, canvasElement);
 
     // vertices data - position and texture coordinates
@@ -92,13 +91,13 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     // texture - sprites
     const texture = device.createTexture({
-        label: url,
+        label: spriteSystem.url,
         format: format,
-        size: [source.width, source.height],
+        size: [spriteSystem.sheetSize.width, spriteSystem.sheetSize.height],
         usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_DST
     });
 
-    device.queue.copyExternalImageToTexture({ source }, { texture }, { width: source.width, height: source.height });
+    device.queue.copyExternalImageToTexture({ source: spriteSystem.bitmap }, { texture }, { width: spriteSystem.sheetSize.width, height: spriteSystem.sheetSize.height });
 
     // texture - depth
     let depthTexture = device.createTexture({
@@ -126,7 +125,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     device.queue.writeBuffer(scalingBuffer, 0, scale);
 
     // uniforms - model size
-    const modelSize = new Float32Array(spriteSystem.size);
+    const modelSize = new Float32Array(spriteSystem.spriteSize);
     const modelSizeBuffer: GPUBuffer = device.createBuffer({
         label: 'model size',
         size: modelSize.byteLength,

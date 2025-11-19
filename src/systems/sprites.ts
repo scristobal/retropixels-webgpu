@@ -1,3 +1,5 @@
+import { loadImageBitmap, loadImageData } from "src/helpers/image";
+
 type Frame = {
     sprite: string;
     duration: number;
@@ -16,12 +18,22 @@ type Atlas = {
     frames: { [n: string]: Frame };
 };
 
-function spriteSheet(atlas: Atlas) {
+async function spriteSheet(atlas: Atlas) {
+
+    const bitmap = await loadImageBitmap(atlas.url);
+    const imgData = await loadImageData(bitmap);
+    if (!imgData) throw 'Failed to load sprite sheet';
+
+    bitmapRegistry.register(bitmap, "bitmaps do not get GC ");
+
     return {
         _frames: atlas.frames,
         _sprites: atlas.sprites,
         _imgSize: atlas.size,
 
+        url: atlas.url,
+        bitmap,
+        imgData,
         transform: new Float32Array(16),
 
         _currentFrameTime: 0,
@@ -53,10 +65,21 @@ function spriteSheet(atlas: Atlas) {
             return this._sprites[this._frames[this._currentFrameName].sprite];
         },
 
-        get size() {
+        get spriteSize() {
             return this._currentSprite.size;
+        },
+
+        get sheetSize() {
+            return { width: this._imgSize[0], height: this._imgSize[1] };
         }
     };
 }
+
+
+
+// bitmaps do not get GC'd
+const bitmapRegistry = new FinalizationRegistry(token => {
+    if (token instanceof ImageBitmap) token.close();
+});
 
 export { spriteSheet };

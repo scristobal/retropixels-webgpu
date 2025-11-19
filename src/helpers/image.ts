@@ -5,9 +5,6 @@ export function getImageDataUsingOfflineCanvas(bitmap: ImageBitmap) {
 
     ctx?.drawImage(bitmap, 0, 0);
 
-    // bitmaps do not get GC'd
-    bitmap.close();
-
     return ctx?.getImageData(0, 0, canvas.width, canvas.height);
 }
 
@@ -47,8 +44,6 @@ export async function loadImageBitmap(url: string) {
     return await createImageBitmap(blob, { colorSpaceConversion: 'none' });
 }
 
-export async function loadImageData(url: string) {
-    const bitmap = await loadImageBitmap(url);
-
+export function loadImageData(bitmap: ImageBitmap) {
     return getImageDataUsingOfflineCanvas(bitmap);
 }
