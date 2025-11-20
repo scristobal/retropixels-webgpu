@@ -1,7 +1,7 @@
 import animationData from 'src/data/animation.json';
 import { canvasManager } from 'src/helpers/canvas';
 import { loadImageBitmap } from 'src/helpers/image';
-import shaderCode from 'src/shaders/shaders.wgsl?raw';
+import shaderCode from 'src/shaders/sprite.wgsl?raw';
 import { inputHandler } from 'src/systems/input';
 import { movement } from 'src/systems/movement';
 import { spriteSheet } from 'src/systems/sprites';

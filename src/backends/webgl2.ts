@@ -1,7 +1,9 @@
 import animationData from 'src/data/animation.json';
 import { canvasManager } from 'src/helpers/canvas';
-import fragmentShaderCode from 'src/shaders/fragment.glsl?raw';
-import vertexShaderCode from 'src/shaders/vertex.glsl?raw';
+import quadFragmentShaderCode from 'src/shaders/quad.fragment.glsl?raw';
+import quadVertexShaderCode from 'src/shaders/quad.vertex.glsl?raw';
+import fragmentShaderCode from 'src/shaders/sprite.fragment.glsl?raw';
+import vertexShaderCode from 'src/shaders/sprite.vertex.glsl?raw';
 import { inputHandler } from 'src/systems/input';
 import { movement } from 'src/systems/movement';
 import { spriteSheet } from 'src/systems/sprites';
@@ -11,56 +13,13 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     const gl = canvasElement.getContext('webgl2');
     if (!gl) throw 'WebGL2 not supported in this browser';
 
-    // shaders - vertex shader
-    const vertexShader = gl.createShader(gl.VERTEX_SHADER);
-    if (!vertexShader) throw 'Failed to create shader';
-
-    gl.shaderSource(vertexShader, vertexShaderCode);
-    gl.compileShader(vertexShader);
-
-    if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)) {
-        console.error(gl.getShaderInfoLog(vertexShader));
-        gl.deleteShader(vertexShader);
-        throw 'Failed to compile vertex shader';
-    }
-
-    // shaders - fragment shader
-    const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
-    if (!fragmentShader) throw 'Failed to create fragment shader';
-
-    gl.shaderSource(fragmentShader, fragmentShaderCode);
-    gl.compileShader(fragmentShader);
-
-    if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)) {
-        console.error(gl.getShaderInfoLog(fragmentShader));
-        gl.deleteShader(fragmentShader);
-        throw 'Failed to compile fragment shader';
-    }
-
-    // program
-    const program = gl.createProgram();
-    if (!program) throw 'Failed to create program';
-
-    gl.attachShader(program, vertexShader);
-    gl.attachShader(program, fragmentShader);
-
-    gl.linkProgram(program);
-
-    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-        console.error(gl.getProgramInfoLog(program));
-        gl.deleteProgram(program);
-        throw 'Failed to link the program';
-    }
-
-    gl.useProgram(program);
-
     // init - movement
     const movementSystem = movement({
         center: { x: 0, y: 0, z: 0 },
-        speed: { x: 0.02, y: 0.02, z: 0 },
+        speed: { x: 0.01, y: 0.01, z: 0 },
         rotationAxis: { x: 0, y: 0, z: 1 },
         angle: 0,
-        rotationSpeed: 0.01
+        rotationSpeed: 0.005
     });
 
     // init - sprites
@@ -69,27 +28,134 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     // init - screen manager
     const screen = canvasManager(gl.getParameter(gl.MAX_TEXTURE_SIZE), canvasElement);
 
+    // init - sprite relative size
+    const spriteScalingData = 2;
+
+    // init - quad resolution
+    const quadSize = new Float32Array([100, 100]);
+
+    // pass - texture quad
+    const quadVertexShader = gl.createShader(gl.VERTEX_SHADER)!;
+    gl.shaderSource(quadVertexShader, quadVertexShaderCode);
+    gl.compileShader(quadVertexShader);
+
+    if (!gl.getShaderParameter(quadVertexShader, gl.COMPILE_STATUS)) {
+        console.error(gl.getShaderInfoLog(quadVertexShader));
+        gl.deleteShader(quadVertexShader);
+        throw 'Failed to compile fragment shader';
+    }
+
+    const quadFragmentShader = gl.createShader(gl.FRAGMENT_SHADER)!;
+    gl.shaderSource(quadFragmentShader, quadFragmentShaderCode);
+    gl.compileShader(quadFragmentShader);
+
+    if (!gl.getShaderParameter(quadFragmentShader, gl.COMPILE_STATUS)) {
+        console.error(gl.getShaderInfoLog(quadFragmentShader));
+        gl.deleteShader(quadFragmentShader);
+        throw 'Failed to compile fragment shader';
+    }
+
+    const quadProgram = gl.createProgram()!;
+    gl.attachShader(quadProgram, quadVertexShader);
+    gl.attachShader(quadProgram, quadFragmentShader);
+    gl.linkProgram(quadProgram);
+
+    if (!gl.getProgramParameter(quadProgram, gl.LINK_STATUS)) {
+        console.error(gl.getProgramInfoLog(quadProgram));
+        gl.deleteProgram(quadProgram);
+        throw 'Failed to link the program';
+    }
+
+    gl.useProgram(quadProgram);
+
+    // uniform - scaling
+    const ratioUniformLocation = gl.getUniformLocation(quadProgram, 'u_ratio');
+
+    gl.activeTexture(gl.TEXTURE1);
+
+    const quadTexture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, quadTexture);
+
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, quadSize[0], quadSize[1], 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+
+    const quadTextureUniformLocation = gl.getUniformLocation(quadProgram, 'u_tex');
+    gl.uniform1i(quadTextureUniformLocation, 1);
+
+    const quadFrameBuffer = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, quadFrameBuffer);
+    gl.viewport(0, 0, screen.resolution[0], screen.resolution[1]);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, quadTexture, 0);
+
+    // shaders - vertex shader
+    const spriteVertexShader = gl.createShader(gl.VERTEX_SHADER);
+    if (!spriteVertexShader) throw 'Failed to create shader';
+
+    gl.shaderSource(spriteVertexShader, vertexShaderCode);
+    gl.compileShader(spriteVertexShader);
+
+    if (!gl.getShaderParameter(spriteVertexShader, gl.COMPILE_STATUS)) {
+        console.error(gl.getShaderInfoLog(spriteVertexShader));
+        gl.deleteShader(spriteVertexShader);
+        throw 'Failed to compile vertex shader';
+    }
+
+    // shaders - fragment shader
+    const spriteFragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+    if (!spriteFragmentShader) throw 'Failed to create fragment shader';
+
+    gl.shaderSource(spriteFragmentShader, fragmentShaderCode);
+    gl.compileShader(spriteFragmentShader);
+
+    if (!gl.getShaderParameter(spriteFragmentShader, gl.COMPILE_STATUS)) {
+        console.error(gl.getShaderInfoLog(spriteFragmentShader));
+        gl.deleteShader(spriteFragmentShader);
+        throw 'Failed to compile fragment shader';
+    }
+
+    // program
+    const spriteProgram = gl.createProgram();
+    if (!spriteProgram) throw 'Failed to create program';
+
+    gl.attachShader(spriteProgram, spriteVertexShader);
+    gl.attachShader(spriteProgram, spriteFragmentShader);
+
+    gl.linkProgram(spriteProgram);
+
+    if (!gl.getProgramParameter(spriteProgram, gl.LINK_STATUS)) {
+        console.error(gl.getProgramInfoLog(spriteProgram));
+        gl.deleteProgram(spriteProgram);
+        throw 'Failed to link the program';
+    }
+
+    gl.useProgram(spriteProgram);
+
     // vertices array object (vao)- position and texture coordinates
     //
     //  3--0
     //  |  |
     //  2--1
-    //                                     x  y  z  u  v
-    //                                    |------0------|-------1-------|-------2--------|-------3-------|
-    const verticesData = new Float32Array([1, 1, 0, 1, 0, 1, -1, 0, 1, 1, -1, -1, 0, 0, 1, -1, 1, 0, 0, 0]);
-    const verticesBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, verticesBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, verticesData, gl.STATIC_DRAW);
+    //                                           x  y  z  u  v
+    //                                          |------0------|-------1-------|-------2--------|-------3-------|
+    const spriteVerticesData = new Float32Array([1, 1, 0, 1, 0, 1, -1, 0, 1, 1, -1, -1, 0, 0, 1, -1, 1, 0, 0, 0]);
 
-    const verticesCoordsLocation = 0;
-    gl.bindAttribLocation(program, verticesCoordsLocation, 'a_coord');
-    gl.enableVertexAttribArray(verticesCoordsLocation);
-    gl.vertexAttribPointer(verticesCoordsLocation, 3, gl.FLOAT, false, 3 * 4 + 2 * 4, 0);
+    const spriteVerticesBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, spriteVerticesBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, spriteVerticesData, gl.STATIC_DRAW);
 
-    const verticesTextureCoordsLocation = 1;
-    gl.bindAttribLocation(program, verticesTextureCoordsLocation, 'a_texCoord');
-    gl.enableVertexAttribArray(verticesTextureCoordsLocation);
-    gl.vertexAttribPointer(verticesTextureCoordsLocation, 2, gl.FLOAT, false, 3 * 4 + 2 * 4, 3 * 4);
+    const spriteVerticesCoordsLocation = 0;
+    gl.bindAttribLocation(spriteProgram, spriteVerticesCoordsLocation, 'a_coord');
+    gl.enableVertexAttribArray(spriteVerticesCoordsLocation);
+    gl.vertexAttribPointer(spriteVerticesCoordsLocation, 3, gl.FLOAT, false, 3 * 4 + 2 * 4, 0);
+
+    const spriteVerticesTextureCoordsLocation = 1;
+    gl.bindAttribLocation(spriteProgram, spriteVerticesTextureCoordsLocation, 'a_texCoord');
+    gl.enableVertexAttribArray(spriteVerticesTextureCoordsLocation);
+    gl.vertexAttribPointer(spriteVerticesTextureCoordsLocation, 2, gl.FLOAT, false, 3 * 4 + 2 * 4, 3 * 4);
 
     // vao - indexing
     //
@@ -98,11 +164,11 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     //  |   /   |
     //  | /   B |
     //  2 - - - 1
-    //                                  |---A---|----B---|
-    const indicesData = new Uint16Array([3, 2, 0, 2, 1, 0]);
-    const indicesBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indicesBuffer);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indicesData, gl.STATIC_DRAW);
+    //                                        |---A---|----B---|
+    const spriteIndicesData = new Uint16Array([3, 2, 0, 2, 1, 0]);
+    const spriteIndicesBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, spriteIndicesBuffer);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, spriteIndicesData, gl.STATIC_DRAW);
 
     // enable culling of back facing (clock wise) triangles
     gl.enable(gl.CULL_FACE);
@@ -110,44 +176,42 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     // enable depth buffer
     gl.enable(gl.DEPTH_TEST);
 
-    // uniforms - resolution
-    const resolutionUniformLocation = gl.getUniformLocation(program, 'u_resolution');
+    // enable alpha blending for transparency
+    gl.enable(gl.BLEND);
+    gl.blendFuncSeparate(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
 
-    // uniforms - scaling
-    const scalingData = 10;
-    const scalingUniformLocation = gl.getUniformLocation(program, 'u_scaling');
-    gl.uniform1f(scalingUniformLocation, scalingData);
+    // uniform - resolution
+    const resolutionUniformLocation = gl.getUniformLocation(spriteProgram, 'u_resolution');
+    gl.uniform2fv(resolutionUniformLocation, quadSize);
 
-    // uniforms - vertex position transform
-    const positionTransformUniformLocation = gl.getUniformLocation(program, 'u_modelTransform');
+    // uniform - scaling
+    const scalingUniformLocation = gl.getUniformLocation(spriteProgram, 'u_scaling');
+    gl.uniform1f(scalingUniformLocation, spriteScalingData);
 
-    // uniforms - texture
-    const textureIndex = gl.TEXTURE0;
+    // uniform - vertex position transform
+    const spritePositionTransformUniformLocation = gl.getUniformLocation(spriteProgram, 'u_modelTransform');
 
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    // uniform - texture
+    gl.activeTexture(gl.TEXTURE0);
 
-    const texture = gl.createTexture();
-
-    gl.activeTexture(textureIndex);
-
-    gl.bindTexture(gl.TEXTURE_2D, texture);
+    const spriteTexture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, spriteTexture);
 
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 
-    // texture - sprites
-    gl.activeTexture(textureIndex);
-
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, spriteSystem.sheetSize.width, spriteSystem.sheetSize.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, spriteSystem.imgData);
 
-    // uniforms - texture size
-    const spriteSizeUniformLocation = gl.getUniformLocation(program, 'u_modelSize');
+    const spriteTextureUniformLocation = gl.getUniformLocation(spriteProgram, 'u_tex');
+    gl.uniform1i(spriteTextureUniformLocation, 0);
+
+    // uniform - texture size
+    const spriteSizeUniformLocation = gl.getUniformLocation(spriteProgram, 'u_modelSize');
 
     // uniform - texture transformation matrix
-    const texTransformUniformLocation = gl.getUniformLocation(program, 'u_texTransform');
+    const spriteTextureTransformUniformLocation = gl.getUniformLocation(spriteProgram, 'u_texTransform');
 
     let lastUpdate = performance.now();
     const frameTimes = new Float32Array(1024);
@@ -179,32 +243,42 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         lastUpdate = performance.now();
     }
 
-    const frameBuffer = gl.createFramebuffer();
-    gl.bindFramebuffer(gl.FRAMEBUFFER, frameBuffer);
-
-    // const fbTexture = gl.createTexture();
-    // gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, fbTexture, 0);
-    // gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, screen.resolution[0], screen.resolution[1], 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-
     function render() {
         if (!gl) throw 'Canvas context lost';
 
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        // 1st pass draw sprite on quad
+        gl.bindFramebuffer(gl.FRAMEBUFFER, quadFrameBuffer);
+        gl.viewport(0, 0, quadSize[0], quadSize[1]);
 
-        if (screen.needsResize) {
-            gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-            gl.uniform2fv(resolutionUniformLocation, screen.resolution);
-        }
-
-        gl.clearColor(0, 0, 0, 0);
+        gl.clearColor(0, 0, 0, 1);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-        gl.uniformMatrix4fv(texTransformUniformLocation, false, spriteSystem.transform);
-        gl.uniform2fv(spriteSizeUniformLocation, spriteSystem.spriteSize);
-        gl.uniformMatrix4fv(positionTransformUniformLocation, false, movementSystem.transform);
+        gl.useProgram(spriteProgram);
 
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        // gl.uniform2fv(resolutionUniformLocation, quadSize);
+        gl.uniformMatrix4fv(spriteTextureTransformUniformLocation, false, spriteSystem.transform);
+        gl.uniform2fv(spriteSizeUniformLocation, spriteSystem.spriteSize);
+        gl.uniformMatrix4fv(spritePositionTransformUniformLocation, false, movementSystem.transform);
+
         gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
+
+        // 2nd pass draw quad on screen
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+        const resize = screen.needsResize;
+
+        gl.viewport(0, 0, screen.resolution[0], screen.resolution[1]);
+
+        gl.clearColor(0, 0, 0, 1);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+        gl.useProgram(quadProgram);
+
+        if (resize) {
+            gl.uniform1f(ratioUniformLocation, screen.resolution[0] / screen.resolution[1]);
+        }
+
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 5);
     }
 
     return function gameLoop(now: number) {

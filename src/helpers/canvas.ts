@@ -5,7 +5,9 @@
  */
 
 function canvasManager(maxTextureDimension: number, canvasElement: HTMLCanvasElement) {
-    const canvasDisplaySize = { width: canvasElement.width, height: canvasElement.height };
+    const resolution = new Float32Array([canvasElement.width, canvasElement.height]);
+
+    let resizeFlag = false;
 
     const observer = new ResizeObserver((entries) => {
         for (const entry of entries) {
@@ -13,27 +15,27 @@ function canvasManager(maxTextureDimension: number, canvasElement: HTMLCanvasEle
 
             if (!contentBoxSize) continue;
 
-            canvasDisplaySize.width = Math.max(1, Math.min(contentBoxSize.inlineSize, maxTextureDimension));
-            canvasDisplaySize.height = Math.max(1, Math.min(contentBoxSize.blockSize, maxTextureDimension));
+            resizeFlag = true;
+
+            resolution[0] = Math.max(1, Math.min(contentBoxSize.inlineSize, maxTextureDimension));
+            resolution[1] = Math.max(1, Math.min(contentBoxSize.blockSize, maxTextureDimension));
         }
     });
 
     observer.observe(canvasElement);
 
     return {
-        resolution: new Float32Array([canvasElement.width, canvasElement.height]),
+        resolution,
 
         get needsResize() {
-            const needResize = canvasElement.width !== canvasDisplaySize.width || canvasElement.height !== canvasDisplaySize.height;
+            if (!resizeFlag) return false;
 
-            if (needResize) {
-                canvasElement.width = canvasDisplaySize.width;
-                canvasElement.height = canvasDisplaySize.height;
-                this.resolution[0] = canvasElement.width;
-                this.resolution[1] = canvasElement.height;
-            }
+            canvasElement.width = this.resolution[0];
+            canvasElement.height = this.resolution[1];
 
-            return needResize;
+            resizeFlag = false;
+
+            return true;
         }
     };
 }
