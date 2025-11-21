@@ -14,31 +14,35 @@ function createProgram(gl: WebGL2RenderingContext, vertexShaderCode: string, fra
     gl.shaderSource(vertexShader, vertexShaderCode);
     gl.compileShader(vertexShader);
 
-    if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)) {
-        console.error(gl.getShaderInfoLog(vertexShader));
-        gl.deleteShader(vertexShader);
-        throw 'Failed to compile fragment shader';
-    }
-
     const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER)!;
     gl.shaderSource(fragmentShader, fragmentShaderCode);
     gl.compileShader(fragmentShader);
 
-    if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)) {
-        console.error(gl.getShaderInfoLog(fragmentShader));
-        gl.deleteShader(fragmentShader);
-        throw 'Failed to compile fragment shader';
-    }
-
     const program = gl.createProgram();
-    if (!program) throw 'Failed to create program';
 
     gl.attachShader(program, vertexShader);
+    gl.deleteShader(vertexShader);
+
     gl.attachShader(program, fragmentShader);
+    gl.deleteShader(fragmentShader);
+
     gl.linkProgram(program);
 
     if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
         console.error(gl.getProgramInfoLog(program));
+
+        if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)) {
+            console.error(gl.getShaderInfoLog(vertexShader));
+            gl.deleteShader(vertexShader);
+            throw 'Failed to compile vertex shader';
+        }
+
+        if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)) {
+            console.error(gl.getShaderInfoLog(fragmentShader));
+            gl.deleteShader(fragmentShader);
+            throw 'Failed to compile fragment shader';
+        }
+
         gl.deleteProgram(program);
         throw 'Failed to link the program';
     }
@@ -52,14 +56,14 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     const movementSystem = movement({
         center: { x: 0, y: 0, z: 0 },
-        speed: { x: 0.01, y: 0.01, z: 0 },
+        speed: { x: 0.005, y: 0.005, z: 0 },
         rotationAxis: { x: 0, y: 0, z: 1 },
         angle: 0,
         rotationSpeed: 0.005
     });
     const spriteSystem = await spriteSheet(animationData);
     const screen = canvasManager(gl.getParameter(gl.MAX_TEXTURE_SIZE), canvasElement);
-    const spriteScalingData = 2;
+    const spriteScalingData = 1;
     const quadSize = new Float32Array([100, 100]);
 
     // globals
