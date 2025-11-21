@@ -1,5 +1,6 @@
 import animationData from 'src/data/animation.json';
 import { canvasManager } from 'src/helpers/canvas';
+import { frameReporter } from 'src/helpers/frames';
 import { loadImageBitmap } from 'src/helpers/image';
 import shaderCode from 'src/shaders/sprite.wgsl?raw';
 import { inputHandler } from 'src/systems/input';
@@ -282,8 +283,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     });
 
     let lastUpdate = performance.now();
-    const frameTimes = new Float32Array(1024);
-    let frameTimesInd = 0;
+    const reportFps = frameReporter();
 
     function update(now: number) {
         const delta = now - lastUpdate;
@@ -299,14 +299,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         // sprite system affects the animation
         spriteSystem.update(delta);
 
-        // performance report
-        frameTimes[++frameTimesInd] = performance.now() - now;
-
-        if (frameTimesInd === frameTimes.length) {
-            const average = frameTimes.reduce((acc, cur) => acc + cur, 0) / frameTimes.length;
-            console.log(`${average.toFixed(3)}ms ~${(1000 / average).toFixed(3)}fps`);
-            frameTimesInd = 0;
-        }
+        reportFps(delta);
 
         lastUpdate = performance.now();
     }
@@ -329,7 +322,8 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
         const encoder = device.createCommandEncoder();
 
-        const canvasView = ctx.getCurrentTexture().createView();
+        const currentTexture = ctx.getCurrentTexture();
+        const canvasView = currentTexture.createView();
         const depthView = depthTexture.createView();
 
         const renderPass = encoder.beginRenderPass({

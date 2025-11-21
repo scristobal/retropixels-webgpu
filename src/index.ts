@@ -1,4 +1,4 @@
-import { renderer } from 'src/backends/webgl2';
+import { renderer } from 'src/backends/webgpu';
 
 const version = import.meta.env.VITE_APP_VERSION;
 console.log(`Version ${version}`);

@@ -139,6 +139,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     //  2 - - - 1
     //                                        |---A---|----B---|
     const spriteIndicesData = new Uint16Array([3, 2, 0, 2, 1, 0]);
+
     const spriteIndicesBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, spriteIndicesBuffer);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, spriteIndicesData, gl.STATIC_DRAW);
@@ -166,9 +167,8 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, spriteSystem.sheetSize.width, spriteSystem.sheetSize.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, spriteSystem.imgData);
 
-
     let lastUpdate = performance.now();
-    const reportFps = frameReporter(lastUpdate);
+    const reportFps = frameReporter();
 
     function update(now: number) {
         const delta = now - lastUpdate;
@@ -184,7 +184,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         // sprite system affects the animation
         spriteSystem.update(delta);
 
-        reportFps(now);
+        reportFps(delta);
 
         lastUpdate = performance.now();
     }
