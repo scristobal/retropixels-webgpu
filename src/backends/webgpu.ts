@@ -1,7 +1,7 @@
 import animationData from 'src/data/animation.json';
 import { canvasManager } from 'src/helpers/canvas';
-import { frameReporter } from 'src/helpers/frames';
 import { loadImageBitmap } from 'src/helpers/image';
+import { timeTrack } from 'src/helpers/time';
 import shaderCode from 'src/shaders/sprite.wgsl?raw';
 import { inputHandler } from 'src/systems/input';
 import { movement } from 'src/systems/movement';
@@ -20,6 +20,8 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     const format = navigator.gpu.getPreferredCanvasFormat();
     ctx.configure({ format, device });
+
+    const timeTracker = timeTrack();
 
     // init - movement system
     const movementSystem = movement({
@@ -282,11 +284,8 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         }
     });
 
-    let lastUpdate = performance.now();
-    const reportFps = frameReporter();
-
-    function update(now: number) {
-        const delta = now - lastUpdate;
+    function update() {
+        const delta = timeTracker();
 
         // movement system affects the position of the model
         if (inputHandler.right) movementSystem.moveRight(delta);
@@ -298,10 +297,6 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
         // sprite system affects the animation
         spriteSystem.update(delta);
-
-        reportFps(delta);
-
-        lastUpdate = performance.now();
     }
 
     function render() {
@@ -360,7 +355,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     }
 
     return function gameLoop(now: number) {
-        update(now);
+        update();
         render();
 
         requestAnimationFrame(gameLoop);

@@ -1,6 +1,6 @@
 import animationData from 'src/data/animation.json';
 import { canvasManager } from 'src/helpers/canvas';
-import { frameReporter } from 'src/helpers/frames';
+import { timeTrack } from 'src/helpers/time';
 import quadFragmentShaderCode from 'src/shaders/quad.fragment.glsl?raw';
 import quadVertexShaderCode from 'src/shaders/quad.vertex.glsl?raw';
 import spriteFragmentShaderCode from 'src/shaders/sprite.fragment.glsl?raw';
@@ -54,6 +54,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     const gl = canvasElement.getContext('webgl2');
     if (!gl) throw 'WebGL2 not supported in this browser';
 
+    const timeTracker = timeTrack();
     const movementSystem = movement({
         center: { x: 0, y: 0, z: 0 },
         speed: { x: 0.005, y: 0.005, z: 0 },
@@ -171,11 +172,8 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, spriteSystem.sheetSize.width, spriteSystem.sheetSize.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, spriteSystem.imgData);
 
-    let lastUpdate = performance.now();
-    const reportFps = frameReporter();
-
-    function update(now: number) {
-        const delta = now - lastUpdate;
+    function update() {
+        const delta = timeTracker();
 
         // movement system affects the position of the model
         if (inputHandler.right) movementSystem.moveRight(delta);
@@ -187,10 +185,6 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
         // sprite system affects the animation
         spriteSystem.update(delta);
-
-        reportFps(delta);
-
-        lastUpdate = performance.now();
     }
 
     function render() {
@@ -231,8 +225,8 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 5);
     }
 
-    return function gameLoop(now: number) {
-        update(now);
+    return function gameLoop() {
+        update();
         render();
 
         requestAnimationFrame(gameLoop);

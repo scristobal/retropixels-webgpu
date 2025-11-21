@@ -14,7 +14,7 @@
         "build": "vite build",
         "check": "biome check && tsc",
         "dev": "vite --open",
-        "fix": "biome check --write",
+        "fix": "biome check --write && tsc",
         "preview": "vite preview --open",
         "clean": "rm -rf node_modules dist"
     }
