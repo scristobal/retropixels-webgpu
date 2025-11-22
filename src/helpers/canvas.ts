@@ -4,7 +4,7 @@
  *
  */
 
-function canvasManager(maxTextureDimension: number, canvasElement: HTMLCanvasElement) {
+export function canvasManager(maxTextureDimension: number, canvasElement: HTMLCanvasElement) {
     const resolution = new Float32Array([canvasElement.width, canvasElement.height]);
 
     let resizeFlag = false;
@@ -39,5 +39,3 @@ function canvasManager(maxTextureDimension: number, canvasElement: HTMLCanvasEle
         }
     };
 }
-
-export { canvasManager };

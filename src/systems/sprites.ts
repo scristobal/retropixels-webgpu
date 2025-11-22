@@ -18,7 +18,7 @@ type Atlas = {
     frames: { [n: string]: Frame };
 };
 
-async function spriteSheet(atlas: Atlas) {
+export async function spriteSheet(atlas: Atlas) {
     const bitmap = await loadImageBitmap(atlas.url);
     const imgData = await loadImageData(bitmap);
     if (!imgData) throw 'Failed to load sprite sheet';
@@ -78,5 +78,3 @@ async function spriteSheet(atlas: Atlas) {
 const bitmapRegistry = new FinalizationRegistry((token) => {
     if (token instanceof ImageBitmap) token.close();
 });
-
-export { spriteSheet };

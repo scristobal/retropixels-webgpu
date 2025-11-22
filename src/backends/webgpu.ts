@@ -1,14 +1,13 @@
 import animationData from 'src/data/animation.json';
 import { canvasManager } from 'src/helpers/canvas';
-import { loadImageBitmap } from 'src/helpers/image';
+import { m4 } from 'src/helpers/m4';
 import { timeTrack } from 'src/helpers/time';
 import shaderCode from 'src/shaders/sprite.wgsl?raw';
 import { inputHandler } from 'src/systems/input';
-import { movement } from 'src/systems/movement';
+import { createMovement } from 'src/systems/movement';
 import { spriteSheet } from 'src/systems/sprites';
 
 async function renderer(canvasElement: HTMLCanvasElement) {
-    // init - context
     const adapter = await navigator.gpu.requestAdapter();
     if (!adapter) throw 'Unable to request adapter';
 
@@ -21,22 +20,19 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     const format = navigator.gpu.getPreferredCanvasFormat();
     ctx.configure({ format, device });
 
-    const timeTracker = timeTrack();
-
-    // init - movement system
-    const movementSystem = movement({
-        center: { x: 0, y: 0, z: 0 },
-        speed: { x: 0.02, y: 0.02, z: 0 },
-        rotationAxis: { x: 0, y: 0, z: 1 },
+    const movement = createMovement({
+        center: [0, 0, 0],
+        speed: [0.02, 0.02, 0],
+        axis: [0, 0, 1],
         angle: 0,
-        rotationSpeed: 0.01
+        rotation: 0.01
     });
-
-    // init - sprites
-    const spriteSystem = await spriteSheet(animationData);
-
-    // init - screen manager
+    const sprite = await spriteSheet(animationData);
+    const timeTracker = timeTrack();
     const screen = canvasManager(device.limits.maxTextureDimension2D, canvasElement);
+
+    let modelTransformMatrix: Float32Array<ArrayBuffer>;
+    let textureTransformMatrix: Float32Array<ArrayBuffer>;
 
     // vertices data - position and texture coordinates
     //
@@ -46,7 +42,6 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     //                                     x  y  z  u  v
     //                                    |------0------|-------1-------|-------2--------|-------3-------|
     const verticesData = new Float32Array([1, 1, 0, 1, 0, 1, -1, 0, 1, 1, -1, -1, 0, 0, 1, -1, 1, 0, 0, 0]);
-    // const verticesData = new Float32Array([1, 1, 1, 1, 1, 1, -1, 1, 1, 0, -1, -1, 1, 0, 0, -1, 1, 1, 1, 0]);
 
     const verticesBuffer: GPUBuffer = device.createBuffer({
         label: 'vertices',
@@ -58,7 +53,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     const verticesBufferLayout: GPUVertexBufferLayout = {
         arrayStride: 3 * 4 + 2 * 4, // f32 is 32 bits = 4 bytes
-        stepMode: 'vertex', // optional
+        stepMode: 'vertex', // opt.
         attributes: [
             {
                 shaderLocation: 0,
@@ -93,17 +88,15 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     const indexFormat: GPUIndexFormat = 'uint32';
 
-    // texture - sprites
     const texture = device.createTexture({
-        label: spriteSystem.url,
+        label: sprite.url,
         format: format,
-        size: [spriteSystem.sheetSize.width, spriteSystem.sheetSize.height],
+        size: [sprite.sheetSize.width, sprite.sheetSize.height],
         usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_DST
     });
 
-    device.queue.copyExternalImageToTexture({ source: spriteSystem.bitmap }, { texture }, { width: spriteSystem.sheetSize.width, height: spriteSystem.sheetSize.height });
+    device.queue.copyExternalImageToTexture({ source: sprite.bitmap }, { texture }, { width: sprite.sheetSize.width, height: sprite.sheetSize.height });
 
-    // texture - depth
     let depthTexture = device.createTexture({
         label: 'depth',
         size: screen.resolution,
@@ -111,51 +104,18 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.RENDER_ATTACHMENT
     });
 
-    // uniforms - resolution
-    const resolutionBuffer: GPUBuffer = device.createBuffer({
-        label: 'resolution',
-        size: screen.resolution.byteLength,
-        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
-    });
-    device.queue.writeBuffer(resolutionBuffer, 0, screen.resolution);
-
-    // uniforms - scaling
-    const scale = new Float32Array([10]);
-    const scalingBuffer: GPUBuffer = device.createBuffer({
-        label: 'scale',
-        size: scale.byteLength,
-        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
-    });
-    device.queue.writeBuffer(scalingBuffer, 0, scale);
-
-    // uniforms - model size
-    const modelSize = new Float32Array(spriteSystem.spriteSize);
-    const modelSizeBuffer: GPUBuffer = device.createBuffer({
-        label: 'model size',
-        size: modelSize.byteLength,
-        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
-    });
-    device.queue.writeBuffer(modelSizeBuffer, 0, modelSize);
-
-    // uniforms - model transformation matrix
-    const modelTransformData = movementSystem.transform;
     const modelTransformBuffer = device.createBuffer({
         label: 'model transform',
-        size: modelTransformData.byteLength,
+        size: 4 * 4 * 4, // mat4x4<f32>
         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
-    device.queue.writeBuffer(modelTransformBuffer, 0, modelTransformData);
 
-    // uniforms - texture transformation matrix
-    const textureTransformData = spriteSystem.transform;
     const textureTransformBuffer = device.createBuffer({
         label: 'texture transform',
-        size: textureTransformData.byteLength,
+        size: 4 * 4 * 4, // mat4x4<f32>
         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     });
-    device.queue.writeBuffer(textureTransformBuffer, 0, textureTransformData);
 
-    // bindings - vertex
     const vertexBindGroupLayout: GPUBindGroupLayout = device.createBindGroupLayout({
         entries: [
             {
@@ -167,21 +127,6 @@ async function renderer(canvasElement: HTMLCanvasElement) {
                 binding: 1,
                 visibility: GPUShaderStage.VERTEX,
                 buffer: { type: 'uniform' }
-            },
-            {
-                binding: 2,
-                visibility: GPUShaderStage.VERTEX,
-                buffer: { type: 'uniform' }
-            },
-            {
-                binding: 3,
-                visibility: GPUShaderStage.VERTEX,
-                buffer: { type: 'uniform' }
-            },
-            {
-                binding: 4,
-                visibility: GPUShaderStage.VERTEX,
-                buffer: { type: 'uniform' }
             }
         ]
     });
@@ -191,28 +136,15 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         entries: [
             {
                 binding: 0,
-                resource: { buffer: resolutionBuffer }
-            },
-            {
-                binding: 1,
-                resource: { buffer: scalingBuffer }
-            },
-            {
-                binding: 2,
-                resource: { buffer: modelSizeBuffer }
-            },
-            {
-                binding: 3,
                 resource: { buffer: modelTransformBuffer }
             },
             {
-                binding: 4,
+                binding: 1,
                 resource: { buffer: textureTransformBuffer }
             }
         ]
     });
 
-    // bindings - fragment
     const fragmentBindGroupLayout: GPUBindGroupLayout = device.createBindGroupLayout({
         entries: [
             {
@@ -242,12 +174,10 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         ]
     });
 
-    // shaders
     const shaderModule: GPUShaderModule = device.createShaderModule({
         code: shaderCode
     });
 
-    // pipeline
     const pipelineLayout: GPUPipelineLayout = device.createPipelineLayout({ bindGroupLayouts: [vertexBindGroupLayout, fragmentBindGroupLayout] });
 
     const pipeline: GPURenderPipeline = device.createRenderPipeline({
@@ -288,15 +218,23 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         const delta = timeTracker();
 
         // movement system affects the position of the model
-        if (inputHandler.right) movementSystem.moveRight(delta);
-        if (inputHandler.left) movementSystem.moveLeft(delta);
-        if (inputHandler.up) movementSystem.moveUp(delta);
-        if (inputHandler.down) movementSystem.moveDown(delta);
-        if (inputHandler.turnRight) movementSystem.rotateClockWise(delta);
-        if (inputHandler.turnLeft) movementSystem.rotateCounterClockWise(delta);
+        if (inputHandler.right) movement.moveRight(delta);
+        if (inputHandler.left) movement.moveLeft(delta);
+        if (inputHandler.up) movement.moveUp(delta);
+        if (inputHandler.down) movement.moveDown(delta);
+        if (inputHandler.turnRight) movement.rotateClockWise(delta);
+        if (inputHandler.turnLeft) movement.rotateCounterClockWise(delta);
 
         // sprite system affects the animation
-        spriteSystem.update(delta);
+        sprite.update(delta);
+
+        const rx = (10 * sprite.spriteSize[0]) / screen.resolution[0];
+        const ry = (10 * sprite.spriteSize[1]) / screen.resolution[1];
+
+        const scale = new Float32Array([rx, ry, 1]);
+
+        modelTransformMatrix = m4().identity.scale(scale).translate(movement.center).rotate(movement.axis, movement.angle).data;
+        textureTransformMatrix = sprite.transform;
     }
 
     function render() {
@@ -308,12 +246,10 @@ async function renderer(canvasElement: HTMLCanvasElement) {
                 format: depthTexture.format,
                 usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING
             });
-
-            device.queue.writeBuffer(resolutionBuffer, 0, screen.resolution);
         }
 
-        device.queue.writeBuffer(modelTransformBuffer, 0, modelTransformData);
-        device.queue.writeBuffer(textureTransformBuffer, 0, textureTransformData);
+        device.queue.writeBuffer(modelTransformBuffer, 0, modelTransformMatrix);
+        device.queue.writeBuffer(textureTransformBuffer, 0, textureTransformMatrix);
 
         const encoder = device.createCommandEncoder();
 

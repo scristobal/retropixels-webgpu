@@ -1,9 +1,6 @@
 
-@group(0) @binding(0) var<uniform> u_resolution: vec2f;
-@group(0) @binding(1) var<uniform> u_scaling: f32;
-@group(0) @binding(2) var<uniform> u_modelSize: vec2f;
-@group(0) @binding(3) var<uniform> u_modelTransform: mat4x4<f32>;
-@group(0) @binding(4) var<uniform> u_texTransform: mat4x4<f32>;
+@group(0) @binding(0) var<uniform> u_modelTransform: mat4x4<f32>;
+@group(0) @binding(1) var<uniform> u_texTransform: mat4x4<f32>;
 
 struct VertexInput {
     @location(0) a_coord: vec3f,
@@ -18,9 +15,7 @@ struct VertexOutput {
 @vertex fn vertex_main(input: VertexInput) -> VertexOutput {
     var output: VertexOutput;
 
-    var position =  u_modelTransform * vec4f(input.a_coord.xyz, 1.0);
-
-    output.a_coord = vec4f(position.xy * u_scaling * u_modelSize / u_resolution.xy, position.z, position.w);
+    output.a_coord = u_modelTransform * vec4f(input.a_coord.xyz, 1.0);
     output.a_texCoord = (u_texTransform * vec4f(input.a_texCoord.xy, 1.0, 0.0)).xy;
 
     return output;

@@ -1,4 +1,4 @@
-function timeTrack() {
+export function timeTrack() {
     let lastCall = performance.now();
     const frameTimes = new Float32Array(1024);
     let frameTimesInd = 0;
@@ -19,5 +19,3 @@ function timeTrack() {
         return delta;
     };
 }
-
-export { timeTrack };

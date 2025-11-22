@@ -1,15 +1,20 @@
-function m4() {
+//
+// zero alocation chain matrix operations
+//
+// usage:
+//  m4().identity.scale(s).translate(v).rotate(r,a).data;
+//
+//
+//
+
+export function m4() {
     return {
         data: new Float32Array(16),
         op: new Float32Array(16),
-
         get identity() {
-            //            |          |           |           |           |
             this.data.set([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
-
             return this;
         },
-
         __multiply() {
             this.data.set([
                 this.data[0] * this.op[0] + this.data[4] * this.op[1] + this.data[8] * this.op[2] + this.data[12] * this.op[3],
@@ -32,47 +37,38 @@ function m4() {
                 this.data[2] * this.op[12] + this.data[6] * this.op[13] + this.data[10] * this.op[14] + this.data[14] * this.op[15],
                 this.data[3] * this.op[12] + this.data[7] * this.op[13] + this.data[11] * this.op[14] + this.data[15] * this.op[15]
             ]);
-
             return this;
         },
-        rotate(ux: number, uy: number, uz: number, rd: number) {
+        rotate(u: Float32Array, rd: number) {
             const c = Math.cos(rd);
             const s = Math.sin(rd);
-
             this.op.set([
-                ux * ux * (1 - c) + c,
-                ux * uy * (1 - c) + uz * s,
-                ux * uz * (1 - c) - uy * s,
+                u[0] * u[0] * (1 - c) + c,
+                u[0] * u[1] * (1 - c) + u[2] * s,
+                u[0] * u[2] * (1 - c) - u[1] * s,
                 0,
-                ux * uy * (1 - c) - uz * s,
-                uy * uy * (1 - c) + c,
-                uy * uz * (1 - c) + ux * s,
+                u[0] * u[1] * (1 - c) - u[2] * s,
+                u[1] * u[1] * (1 - c) + c,
+                u[1] * u[2] * (1 - c) + u[0] * s,
                 0,
-                ux * uz * (1 - c) + uy * s,
-                uy * uz * (1 - c) - ux * s,
-                uz * uz * (1 - c) + c,
+                u[0] * u[2] * (1 - c) + u[1] * s,
+                u[1] * u[2] * (1 - c) - u[0] * s,
+                u[2] * u[2] * (1 - c) + c,
                 0,
                 0,
                 0,
                 0,
                 1
             ]);
-
             return this.__multiply();
         },
-        scale(sx: number, sy: number, sz: number) {
-            //          |           |            |            |           |
-            this.op.set([sx, 0, 0, 0, 0, sy, 0, 0, 0, 0, sz, 0, 0, 0, 0, 1]);
-
+        scale(s: Float32Array) {
+            this.op.set([s[0], 0, 0, 0, 0, s[1], 0, 0, 0, 0, s[2], 0, 0, 0, 0, 1]);
             return this.__multiply();
         },
-        translate(tx: number, ty: number, tz: number) {
-            //          |           |            |            |           |
-            this.op.set([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, tx, ty, tz, 1]);
-
+        translate(t: Float32Array) {
+            this.op.set([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, t[0], t[1], t[2], 1]);
             return this.__multiply();
         }
     };
 }
-
-export { m4 };

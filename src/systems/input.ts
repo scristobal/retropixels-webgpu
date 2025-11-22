@@ -4,7 +4,7 @@
  *
  */
 
-const inputHandler = {
+export const inputHandler = {
     up: false,
     down: false,
     left: false,
@@ -66,5 +66,3 @@ window.onkeyup = (e) => {
             break;
     }
 };
-
-export { inputHandler };

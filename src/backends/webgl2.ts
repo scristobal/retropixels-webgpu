@@ -1,12 +1,13 @@
 import animationData from 'src/data/animation.json';
 import { canvasManager } from 'src/helpers/canvas';
+import { m4 } from 'src/helpers/m4';
 import { timeTrack } from 'src/helpers/time';
 import quadFragmentShaderCode from 'src/shaders/quad.fragment.glsl?raw';
 import quadVertexShaderCode from 'src/shaders/quad.vertex.glsl?raw';
 import spriteFragmentShaderCode from 'src/shaders/sprite.fragment.glsl?raw';
 import spriteVertexShaderCode from 'src/shaders/sprite.vertex.glsl?raw';
 import { inputHandler } from 'src/systems/input';
-import { movement } from 'src/systems/movement';
+import { createMovement } from 'src/systems/movement';
 import { spriteSheet } from 'src/systems/sprites';
 
 function createProgram(gl: WebGL2RenderingContext, vertexShaderCode: string, fragmentShaderCode: string) {
@@ -54,18 +55,20 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     const gl = canvasElement.getContext('webgl2');
     if (!gl) throw 'WebGL2 not supported in this browser';
 
-    const timeTracker = timeTrack();
-    const movementSystem = movement({
-        center: { x: 0, y: 0, z: 0 },
-        speed: { x: 0.005, y: 0.005, z: 0 },
-        rotationAxis: { x: 0, y: 0, z: 1 },
+    const movement = createMovement({
+        center: [0, 0, 0],
+        speed: [0.005, 0.005, 0],
+        axis: [0, 0, 1],
         angle: 0,
-        rotationSpeed: 0.005
+        rotation: 0.005
     });
-    const spriteSystem = await spriteSheet(animationData);
+    const sprite = await spriteSheet(animationData);
+    const timeTracker = timeTrack();
     const screen = canvasManager(gl.getParameter(gl.MAX_TEXTURE_SIZE), canvasElement);
-    const spriteScalingData = 1;
     const quadSize = new Float32Array([100, 100]);
+
+    let spriteModelTransform: Float32Array;
+    let spriteTextureTransform: Float32Array;
 
     // globals
     gl.enable(gl.CULL_FACE);
@@ -149,19 +152,11 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, spriteIndicesBuffer);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, spriteIndicesData, gl.STATIC_DRAW);
 
-    const resolutionUniformLocation = gl.getUniformLocation(spriteProgram, 'u_resolution');
-    const spriteSizeUniformLocation = gl.getUniformLocation(spriteProgram, 'u_modelSize');
-    const scalingUniformLocation = gl.getUniformLocation(spriteProgram, 'u_scaling');
-    const spritePositionTransformUniformLocation = gl.getUniformLocation(spriteProgram, 'u_modelTransform');
-    const spriteTextureUniformLocation = gl.getUniformLocation(spriteProgram, 'u_texColor');
+    const spriteModelTransformUniformLocation = gl.getUniformLocation(spriteProgram, 'u_modelTransform');
     const spriteTextureTransformUniformLocation = gl.getUniformLocation(spriteProgram, 'u_texTransform');
+    const spriteColorTextureUniformLocation = gl.getUniformLocation(spriteProgram, 'u_texColor');
 
-    gl.uniform2fv(resolutionUniformLocation, quadSize);
-    gl.uniform2fv(spriteSizeUniformLocation, spriteSystem.spriteSize);
-    gl.uniform1f(scalingUniformLocation, spriteScalingData);
-    gl.uniformMatrix4fv(spritePositionTransformUniformLocation, false, movementSystem.transform);
-    gl.uniform1i(spriteTextureUniformLocation, 0);
-    gl.uniformMatrix4fv(spriteTextureTransformUniformLocation, false, spriteSystem.transform);
+    gl.uniform1i(spriteColorTextureUniformLocation, 0);
 
     gl.activeTexture(gl.TEXTURE0);
     const spriteTexture = gl.createTexture();
@@ -170,21 +165,27 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, spriteSystem.sheetSize.width, spriteSystem.sheetSize.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, spriteSystem.imgData);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, sprite.sheetSize.width, sprite.sheetSize.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, sprite.imgData);
 
     function update() {
         const delta = timeTracker();
 
         // movement system affects the position of the model
-        if (inputHandler.right) movementSystem.moveRight(delta);
-        if (inputHandler.left) movementSystem.moveLeft(delta);
-        if (inputHandler.up) movementSystem.moveUp(delta);
-        if (inputHandler.down) movementSystem.moveDown(delta);
-        if (inputHandler.turnRight) movementSystem.rotateClockWise(delta);
-        if (inputHandler.turnLeft) movementSystem.rotateCounterClockWise(delta);
+        if (inputHandler.right) movement.moveRight(delta);
+        if (inputHandler.left) movement.moveLeft(delta);
+        if (inputHandler.up) movement.moveUp(delta);
+        if (inputHandler.down) movement.moveDown(delta);
+        if (inputHandler.turnRight) movement.rotateClockWise(delta);
+        if (inputHandler.turnLeft) movement.rotateCounterClockWise(delta);
 
         // sprite system affects the animation
-        spriteSystem.update(delta);
+        sprite.update(delta);
+
+        // const ratio = screen.resolution[0] / screen.resolution[1];
+        // const scale = new Float32Array([2 * sprite.spriteSize[0] / (ratio * quadSize[0]), 2 * ratio * sprite.spriteSize[1] / quadSize[1], 1]);
+        const scale = new Float32Array([sprite.spriteSize[0] / quadSize[0], sprite.spriteSize[1] / quadSize[1], 1]);
+        spriteModelTransform = m4().identity.scale(scale).translate(movement.center).rotate(movement.axis, movement.angle).data;
+        spriteTextureTransform = sprite.transform;
     }
 
     function render() {
@@ -199,10 +200,8 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
         gl.useProgram(spriteProgram);
 
-        // gl.uniform2fv(resolutionUniformLocation, quadSize); // quad size does not change dynamically
-        gl.uniformMatrix4fv(spriteTextureTransformUniformLocation, false, spriteSystem.transform);
-        gl.uniform2fv(spriteSizeUniformLocation, spriteSystem.spriteSize);
-        gl.uniformMatrix4fv(spritePositionTransformUniformLocation, false, movementSystem.transform);
+        gl.uniformMatrix4fv(spriteModelTransformUniformLocation, false, spriteModelTransform);
+        gl.uniformMatrix4fv(spriteTextureTransformUniformLocation, false, spriteTextureTransform);
 
         gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
 

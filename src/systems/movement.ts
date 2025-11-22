@@ -1,61 +1,35 @@
-import { m4 } from 'src/helpers/matrix';
-
-type Coords = {
-    x: number;
-    y: number;
-    z: number;
-};
-
 type State = {
-    center: Coords;
-    speed: Coords;
-    rotationAxis: Coords;
+    center: number[];
+    speed: number[];
+    axis: number[];
     angle: number;
-    rotationSpeed: number;
+    rotation: number;
 };
 
-function movement(state: State) {
-    const c = {
-        ...state,
-        _transform: m4(),
-
+export function createMovement(state: State) {
+    return {
+        center: new Float32Array(state.center),
+        speed: new Float32Array(state.speed),
+        axis: new Float32Array(state.axis),
+        angle: state.angle,
+        rotation: state.rotation,
         moveRight(dt: number) {
-            this.center.x += this.speed.x * dt;
-            this._updateTransform();
+            this.center[0] += this.speed[0] * dt;
         },
         moveLeft(dt: number) {
-            this.center.x -= this.speed.x * dt;
-            this._updateTransform();
+            this.center[0] -= this.speed[0] * dt;
         },
         moveUp(dt: number) {
-            this.center.y += this.speed.y * dt;
-            this._updateTransform();
+            this.center[1] += this.speed[1] * dt;
         },
         moveDown(dt: number) {
-            this.center.y -= this.speed.y * dt;
-            this._updateTransform();
+            this.center[1] -= this.speed[1] * dt;
         },
         rotateClockWise(dt: number) {
-            this.angle += this.rotationSpeed * dt;
-            this._updateTransform();
+            this.angle += this.rotation * dt;
         },
         rotateCounterClockWise(dt: number) {
-            this.angle -= this.rotationSpeed * dt;
-            this._updateTransform();
-        },
-
-        _updateTransform() {
-            this._transform.identity.translate(this.center.x, this.center.y, this.center.z).rotate(this.rotationAxis.x, this.rotationAxis.y, this.rotationAxis.z, this.angle);
-        },
-
-        get transform(): Float32Array<ArrayBuffer> {
-            return this._transform.data;
+            this.angle -= this.rotation * dt;
         }
     };
-
-    c._updateTransform();
-
-    return c;
 }
-
-export { movement };
