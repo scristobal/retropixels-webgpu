@@ -1,6 +1,6 @@
 import animationData from 'src/data/animation.json';
-import { canvasManager } from 'src/helpers/canvas';
 import { m4 } from 'src/helpers/m4';
+import { screenManager } from 'src/helpers/screen';
 import { timeTrack } from 'src/helpers/time';
 import quadFragmentShaderCode from 'src/shaders/quad.fragment.glsl?raw';
 import quadVertexShaderCode from 'src/shaders/quad.vertex.glsl?raw';
@@ -62,11 +62,10 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         angle: 0,
         rotation: 0.01
     });
-    const sprite = await spriteSheet(animationData);
+    const sprite = await spriteSheet(animationData, 10);
+
     const timeTracker = timeTrack();
-    const screen = canvasManager(gl.getParameter(gl.MAX_TEXTURE_SIZE), canvasElement);
-    const scale = 1;
-    const quadSize = new Float32Array([screen.resolution[0] / scale, screen.resolution[1] / scale]);
+    const screen = screenManager(1, gl.getParameter(gl.MAX_TEXTURE_SIZE), canvasElement);
 
     let spriteModelTransform: Float32Array;
     let spriteTextureTransform: Float32Array;
@@ -91,7 +90,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, quadSize[0], quadSize[1], 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, screen.quadResolution[0], screen.quadResolution[1], 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
     gl.uniform1i(quadTextureUniformLocation, 1);
 
     gl.activeTexture(gl.TEXTURE2);
@@ -101,12 +100,12 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT24, quadSize[0], quadSize[1], 0, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT, null);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT24, screen.quadResolution[0], screen.quadResolution[1], 0, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT, null);
     gl.uniform1i(quadDepthTextureUniformLocation, 2);
 
     const quadFrameBuffer = gl.createFramebuffer();
     gl.bindFramebuffer(gl.FRAMEBUFFER, quadFrameBuffer);
-    gl.viewport(0, 0, screen.resolution[0], screen.resolution[1]);
+    gl.viewport(0, 0, screen.canvasResolution[0], screen.canvasResolution[1]);
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, quadTexture, 0);
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, depthTexture, 0);
 
@@ -183,10 +182,11 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         // sprite system affects the animation
         sprite.update(delta);
 
-        const spriteScale = 5 * scale;
+        if (resize) {
+            sprite.rescale(screen.canvasResolution);
+        }
 
-        const factor = new Float32Array([(spriteScale * sprite.spriteSize[0]) / screen.resolution[0], (spriteScale * sprite.spriteSize[1]) / screen.resolution[1], 1]);
-        spriteModelTransform = m4().identity.scale(factor).translate(movement.center).rotate(movement.axis, movement.angle).data;
+        spriteModelTransform = m4().identity.scale(sprite.factor).translate(movement.center).rotate(movement.axis, movement.angle).data;
         spriteTextureTransform = sprite.transform;
     }
 
@@ -194,18 +194,16 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         if (!gl) throw 'Canvas context lost';
 
         if (resize) {
-            const quadSize = new Float32Array([screen.resolution[0] / scale, screen.resolution[1] / scale]);
-
             gl.activeTexture(gl.TEXTURE1);
-            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, quadSize[0], quadSize[1], 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, screen.quadResolution[0], screen.quadResolution[1], 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
 
             gl.activeTexture(gl.TEXTURE2);
-            gl.texImage2D(gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT24, quadSize[0], quadSize[1], 0, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT, null);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT24, screen.quadResolution[0], screen.quadResolution[1], 0, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT, null);
         }
 
         // 1st pass draw sprite on quad
         gl.bindFramebuffer(gl.FRAMEBUFFER, quadFrameBuffer);
-        gl.viewport(0, 0, screen.resolution[0] / scale, screen.resolution[1] / scale);
+        gl.viewport(0, 0, screen.quadResolution[0], screen.quadResolution[1]);
         gl.clearColor(0, 0, 0, 1);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
@@ -218,7 +216,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
         // 2nd pass draw quad on screen
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        gl.viewport(0, 0, screen.resolution[0], screen.resolution[1]);
+        gl.viewport(0, 0, screen.canvasResolution[0], screen.canvasResolution[1]);
         gl.clearColor(0, 0, 0, 1);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 

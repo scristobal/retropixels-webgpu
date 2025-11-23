@@ -25,5 +25,12 @@ struct VertexOutput {
 @group(1) @binding(1) var texture: texture_2d<f32>;
 
 @fragment fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
-    return textureSample(texture, texture_sampler, input.a_texCoord);
+    let texColor : vec4f = textureSample(texture, texture_sampler, input.a_texCoord);
+
+    // skip transparent fragments in depth buffer
+    if (texColor.a == 0.0) {
+        discard;
+    };
+
+    return texColor;
 }

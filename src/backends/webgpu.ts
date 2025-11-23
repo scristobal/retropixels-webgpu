@@ -1,6 +1,6 @@
 import animationData from 'src/data/animation.json';
-import { canvasManager } from 'src/helpers/canvas';
 import { m4 } from 'src/helpers/m4';
+import { screenManager } from 'src/helpers/screen';
 import { timeTrack } from 'src/helpers/time';
 import shaderCode from 'src/shaders/sprite.wgsl?raw';
 import { inputHandler } from 'src/systems/input';
@@ -27,9 +27,9 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         angle: 0,
         rotation: 0.01
     });
-    const sprite = await spriteSheet(animationData);
+    const sprite = await spriteSheet(animationData, 10);
     const timeTracker = timeTrack();
-    const screen = canvasManager(device.limits.maxTextureDimension2D, canvasElement);
+    const screen = screenManager(1, device.limits.maxTextureDimension2D, canvasElement);
 
     let modelTransformMatrix: Float32Array<ArrayBuffer>;
     let textureTransformMatrix: Float32Array<ArrayBuffer>;
@@ -42,13 +42,11 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     //                                     x  y  z  u  v
     //                                    |------0------|-------1-------|-------2--------|-------3-------|
     const verticesData = new Float32Array([1, 1, 0, 1, 0, 1, -1, 0, 1, 1, -1, -1, 0, 0, 1, -1, 1, 0, 0, 0]);
-
     const verticesBuffer: GPUBuffer = device.createBuffer({
         label: 'vertices',
         size: verticesData.byteLength,
         usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST
     });
-
     device.queue.writeBuffer(verticesBuffer, 0, verticesData);
 
     const verticesBufferLayout: GPUVertexBufferLayout = {
@@ -77,13 +75,11 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     //  2 - - - 1
     //                                  |---A---|----B---|
     const indicesData = new Uint32Array([3, 2, 0, 2, 1, 0]);
-
     const indicesBuffer: GPUBuffer = device.createBuffer({
         label: 'indices',
         size: indicesData.byteLength,
         usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST
     });
-
     device.queue.writeBuffer(indicesBuffer, 0, indicesData);
 
     const indexFormat: GPUIndexFormat = 'uint32';
@@ -99,7 +95,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     let depthTexture = device.createTexture({
         label: 'depth',
-        size: screen.resolution,
+        size: screen.canvasResolution,
         format: 'depth32float',
         usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.RENDER_ATTACHMENT
     });
@@ -214,8 +210,12 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         }
     });
 
+    let resize = false;
+
     function update() {
         const delta = timeTracker();
+
+        resize = screen.needsResize;
 
         // movement system affects the position of the model
         if (inputHandler.right) movement.moveRight(delta);
@@ -228,21 +228,20 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         // sprite system affects the animation
         sprite.update(delta);
 
-        const rx = (10 * sprite.spriteSize[0]) / screen.resolution[0];
-        const ry = (10 * sprite.spriteSize[1]) / screen.resolution[1];
+        if (resize) {
+            sprite.rescale(screen.canvasResolution);
+        }
 
-        const scale = new Float32Array([rx, ry, 1]);
-
-        modelTransformMatrix = m4().identity.scale(scale).translate(movement.center).rotate(movement.axis, movement.angle).data;
+        modelTransformMatrix = m4().identity.scale(sprite.factor).translate(movement.center).rotate(movement.axis, movement.angle).data;
         textureTransformMatrix = sprite.transform;
     }
 
     function render() {
         if (!ctx) throw 'Canvas context lost';
 
-        if (screen.needsResize) {
+        if (resize) {
             depthTexture = device.createTexture({
-                size: screen.resolution,
+                size: screen.canvasResolution,
                 format: depthTexture.format,
                 usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING
             });
