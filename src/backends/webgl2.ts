@@ -57,15 +57,16 @@ async function renderer(canvasElement: HTMLCanvasElement) {
 
     const movement = createMovement({
         center: [0, 0, 0],
-        speed: [0.005, 0.005, 0],
+        speed: [0.02, 0.02, 0],
         axis: [0, 0, 1],
         angle: 0,
-        rotation: 0.005
+        rotation: 0.01
     });
     const sprite = await spriteSheet(animationData);
     const timeTracker = timeTrack();
     const screen = canvasManager(gl.getParameter(gl.MAX_TEXTURE_SIZE), canvasElement);
-    const quadSize = new Float32Array([100, 100]);
+    const scale = 1;
+    const quadSize = new Float32Array([screen.resolution[0] / scale, screen.resolution[1] / scale]);
 
     let spriteModelTransform: Float32Array;
     let spriteTextureTransform: Float32Array;
@@ -80,11 +81,8 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     const quadProgram = createProgram(gl, quadVertexShaderCode, quadFragmentShaderCode);
     gl.useProgram(quadProgram);
 
-    const ratioUniformLocation = gl.getUniformLocation(quadProgram, 'u_ratio');
     const quadTextureUniformLocation = gl.getUniformLocation(quadProgram, 'u_texColor');
     const quadDepthTextureUniformLocation = gl.getUniformLocation(quadProgram, 'u_texDepth');
-
-    gl.uniform1f(ratioUniformLocation, screen.resolution[1] / screen.resolution[0]);
 
     gl.activeTexture(gl.TEXTURE1);
     const quadTexture = gl.createTexture();
@@ -167,8 +165,12 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, sprite.sheetSize.width, sprite.sheetSize.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, sprite.imgData);
 
+    let resize = false;
+
     function update() {
         const delta = timeTracker();
+
+        resize = screen.needsResize;
 
         // movement system affects the position of the model
         if (inputHandler.right) movement.moveRight(delta);
@@ -181,20 +183,29 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         // sprite system affects the animation
         sprite.update(delta);
 
-        // const ratio = screen.resolution[0] / screen.resolution[1];
-        // const scale = new Float32Array([2 * sprite.spriteSize[0] / (ratio * quadSize[0]), 2 * ratio * sprite.spriteSize[1] / quadSize[1], 1]);
-        const scale = new Float32Array([sprite.spriteSize[0] / quadSize[0], sprite.spriteSize[1] / quadSize[1], 1]);
-        spriteModelTransform = m4().identity.scale(scale).translate(movement.center).rotate(movement.axis, movement.angle).data;
+        const spriteScale = 5 * scale;
+
+        const factor = new Float32Array([(spriteScale * sprite.spriteSize[0]) / screen.resolution[0], (spriteScale * sprite.spriteSize[1]) / screen.resolution[1], 1]);
+        spriteModelTransform = m4().identity.scale(factor).translate(movement.center).rotate(movement.axis, movement.angle).data;
         spriteTextureTransform = sprite.transform;
     }
 
     function render() {
         if (!gl) throw 'Canvas context lost';
-        const resize = screen.needsResize;
+
+        if (resize) {
+            const quadSize = new Float32Array([screen.resolution[0] / scale, screen.resolution[1] / scale]);
+
+            gl.activeTexture(gl.TEXTURE1);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, quadSize[0], quadSize[1], 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+
+            gl.activeTexture(gl.TEXTURE2);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT24, quadSize[0], quadSize[1], 0, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT, null);
+        }
 
         // 1st pass draw sprite on quad
         gl.bindFramebuffer(gl.FRAMEBUFFER, quadFrameBuffer);
-        gl.viewport(0, 0, quadSize[0], quadSize[1]);
+        gl.viewport(0, 0, screen.resolution[0] / scale, screen.resolution[1] / scale);
         gl.clearColor(0, 0, 0, 1);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
@@ -216,10 +227,6 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         // Bind depth texture instead of color texture
         // gl.activeTexture(gl.TEXTURE1);
         // gl.bindTexture(gl.TEXTURE_2D, depthTexture);
-
-        if (resize) {
-            gl.uniform1f(ratioUniformLocation, screen.resolution[0] / screen.resolution[1]);
-        }
 
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 5);
     }

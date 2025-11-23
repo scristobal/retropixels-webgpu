@@ -16,12 +16,10 @@ vec2 v_texCoords[5] = vec2[](
     vec2(0.0, 1.0)
 );
 
-uniform float u_ratio;
-
 out vec2 v_texCoord;
 
 void main() {
-    vec2 coords = vec2(v_coords[gl_VertexID].x, u_ratio * v_coords[gl_VertexID].y);
+    vec2 coords = vec2(v_coords[gl_VertexID].x, v_coords[gl_VertexID].y);
 
     gl_Position = vec4(coords, 0.0, 1.0);
     v_texCoord = v_texCoords[gl_VertexID];
