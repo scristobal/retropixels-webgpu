@@ -21,17 +21,22 @@ export function m4() {
             ]);
             return this;
         },
-        perspective(fov: number, aspect: number, near: number, far: number) {
-            const f = Math.tan(0.5 * (Math.PI - fov));
+        perspective(yFov: number, aspect: number, zNear: number, zFar: number) {
+            const f = Math.tan(0.5 * (Math.PI - Math.PI*yFov/180));
+            const rInv = 1 / (zNear - zFar);
 
             // biome-ignore format: custom matrix alignment
             this.data = new Float32Array([
-                f / aspect, 0,                               0,  0,
-                         0, f,                               0,  0,
-                         0, 0,     (near + far) / (near - far), -1,
-                         0, 0, (2 * near * far) / (near - far),  0
+                f / aspect, 0,                   0,  0,
+                         0, f,                   0,  0,
+                         0, 0,         zFar * rInv, -1,
+                         0, 0, zNear * zFar * rInv,  0
             ]);
 
+            return this;
+        },
+        new(data: Float32Array) {
+            this.data.set(data);
             return this;
         },
         __apply() {
@@ -96,7 +101,13 @@ export function m4() {
             return this.__apply();
         },
         apply(vec: Float32Array) {
-            return new Float32Array([0, 0, 0]);
+            // biome-ignore format: custom matrix alignment
+            return new Float32Array([
+                vec[0] * this.data[0] + vec[1] * this.data[4] + vec[2] * this.data[ 8] + vec[3] * this.data[12],
+                vec[0] * this.data[1] + vec[1] * this.data[5] + vec[2] * this.data[ 9] + vec[3] * this.data[13],
+                vec[0] * this.data[2] + vec[1] * this.data[6] + vec[2] * this.data[10] + vec[3] * this.data[14],
+                vec[0] * this.data[3] + vec[1] * this.data[7] + vec[2] * this.data[11] + vec[3] * this.data[15],
+            ]);
         }
     };
 }

@@ -242,10 +242,26 @@ async function renderer(canvasElement: HTMLCanvasElement) {
             sprite.rescale(screen.canvasResolution);
         }
 
-        modelTransformMatrix = m4().identity.scale(sprite.factor).translate(movement.center).rotate(movement.axis, movement.angle).data;
+        modelTransformMatrix = m4()
+            .perspective(90, screen.canvasResolution[0]/screen.canvasResolution[1], 10, 1000).data;//
+            //.scale(sprite.factor).translate(movement.center).rotate(movement.axis, movement.angle).data;
+        //
+        //console.log(modelTransformMatrix);
 
-        // const verticesData = new Float32Array([1, 1, 0, 1, 0, 1, -1, 0, 1, 1, -1, -1, 0, 0, 1, -1, 1, 0, 0, 0]);
-        // const tx = m4().identity.multiply(new Float32Array([]));
+        // [
+        //       1,  1, 0, 1, 0,
+        //       1, -1, 0, 1, 1,
+        //      -1, -1, 0, 0, 1,
+        //      -1,  1, 0, 0, 0
+        //  ];
+        const r = screen.canvasResolution[0]/screen.canvasResolution[1];
+        const tx = m4()
+        .perspective(100, r , 10, 1000)
+        .apply(new Float32Array([1, 1, 100, 1]));
+
+        // const tx = m4().identity.apply(new Float32Array([1,1,0,1]));
+
+        console.log(tx);
         textureTransformMatrix = sprite.transform;
     }
 

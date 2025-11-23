@@ -8,10 +8,12 @@
         "@webgpu/types": "^0.1.66",
         "typescript": "^5.9.3",
         "vite": "^7.2.2",
-        "vite-tsconfig-paths": "^5.1.4"
+        "vite-tsconfig-paths": "^5.1.4",
+        "vitest": "^4.0.13"
     },
     "scripts": {
         "build": "vite build",
+        "test": "vitest",
         "check": "biome check && tsc",
         "dev": "vite --open",
         "fix": "biome check --write && tsc",
