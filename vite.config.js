@@ -1,5 +1,5 @@
 /// <reference types="vitest/config" />
-// @ts-check
+
 import * as child from 'node:child_process';
 import { defineConfig } from 'vite';
 import tsconfigPaths from 'vite-tsconfig-paths';

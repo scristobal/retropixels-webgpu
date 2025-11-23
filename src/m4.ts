@@ -22,7 +22,7 @@ export function m4() {
             return this;
         },
         perspective(yFov: number, aspect: number, zNear: number, zFar: number) {
-            const f = Math.tan(0.5 * (Math.PI - Math.PI*yFov/180));
+            const f = Math.tan(0.5 * (Math.PI - (Math.PI * yFov) / 180));
             const rInv = 1 / (zNear - zFar);
 
             // biome-ignore format: custom matrix alignment

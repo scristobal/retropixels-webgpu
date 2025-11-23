@@ -1,4 +1,4 @@
-import { loadImageBitmap, loadImageData } from 'src/helpers/image';
+import { loadImageBitmap, loadImageData } from 'src/image';
 
 type Frame = {
     sprite: string;
