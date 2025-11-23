@@ -39,9 +39,15 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     //  3--0
     //  |  |
     //  2--1
-    //                                     x  y  z  u  v
-    //                                    |------0------|-------1-------|-------2--------|-------3-------|
-    const verticesData = new Float32Array([1, 1, 0, 1, 0, 1, -1, 0, 1, 1, -1, -1, 0, 0, 1, -1, 1, 0, 0, 0]);
+    //
+    // biome-ignore format: custom matrix alignment
+    const verticesData = new Float32Array([
+    //   x   y  z  u  v
+         1,  1, 0, 1, 0,
+         1, -1, 0, 1, 1,
+        -1, -1, 0, 0, 1,
+        -1,  1, 0, 0, 0
+    ]);
     const verticesBuffer: GPUBuffer = device.createBuffer({
         label: 'vertices',
         size: verticesData.byteLength,
@@ -73,8 +79,12 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     //  |   /   |
     //  | /   B |
     //  2 - - - 1
-    //                                  |---A---|----B---|
-    const indicesData = new Uint32Array([3, 2, 0, 2, 1, 0]);
+    //
+    // biome-ignore format: custom matrix alignment
+    const indicesData = new Uint32Array([
+        3, 2, 0,
+        2, 1, 0
+    ]);
     const indicesBuffer: GPUBuffer = device.createBuffer({
         label: 'indices',
         size: indicesData.byteLength,
@@ -233,6 +243,9 @@ async function renderer(canvasElement: HTMLCanvasElement) {
         }
 
         modelTransformMatrix = m4().identity.scale(sprite.factor).translate(movement.center).rotate(movement.axis, movement.angle).data;
+
+        // const verticesData = new Float32Array([1, 1, 0, 1, 0, 1, -1, 0, 1, 1, -1, -1, 0, 0, 1, -1, 1, 0, 0, 0]);
+        // const tx = m4().identity.multiply(new Float32Array([]));
         textureTransformMatrix = sprite.transform;
     }
 

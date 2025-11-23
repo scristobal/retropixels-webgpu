@@ -121,9 +121,15 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     //  3--0
     //  |  |
     //  2--1
-    //                                           x  y  z  u  v
-    //                                          |------0------|-------1-------|-------2--------|-------3-------|
-    const spriteVerticesData = new Float32Array([1, 1, 0, 1, 0, 1, -1, 0, 1, 1, -1, -1, 0, 0, 1, -1, 1, 0, 0, 0]);
+    //
+    // biome-ignore format: custom matrix alignment
+    const spriteVerticesData = new Float32Array([
+    //   x   y  z  u  v
+         1,  1, 0, 1, 0,
+         1, -1, 0, 1, 1,
+        -1, -1, 0, 0, 1,
+        -1,  1, 0, 0, 0
+    ]);
 
     const spriteVerticesBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, spriteVerticesBuffer);
@@ -142,8 +148,12 @@ async function renderer(canvasElement: HTMLCanvasElement) {
     //  |   /   |
     //  | /   B |
     //  2 - - - 1
-    //                                        |---A---|----B---|
-    const spriteIndicesData = new Uint16Array([3, 2, 0, 2, 1, 0]);
+    //
+    // biome-ignore format: custom matrix alignment
+    const spriteIndicesData = new Uint16Array([
+        3, 2, 0, 
+        2, 1, 0
+    ]);
 
     const spriteIndicesBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, spriteIndicesBuffer);
@@ -186,7 +196,7 @@ async function renderer(canvasElement: HTMLCanvasElement) {
             sprite.rescale(screen.canvasResolution);
         }
 
-        spriteModelTransform = m4().identity.scale(sprite.factor).translate(movement.center).rotate(movement.axis, movement.angle).data;
+        spriteModelTransform = m4().perspective(90, 1, -10, 10).scale(sprite.factor).translate(movement.center).rotate(movement.axis, movement.angle).data;
         spriteTextureTransform = sprite.transform;
     }
 
