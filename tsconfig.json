@@ -31,8 +31,8 @@
         "strict": true,
         "target": "esnext",
         "types": ["@webgpu/types", "vite/client"],
-        "baseUrl": "."
+        "paths": { "*": ["./*"] }
     },
     "exclude": ["node_modules", "lib"],
-    "include": ["**/*.ts"]
+    "include": ["**/*.ts", "vite.config.js"]
 }
